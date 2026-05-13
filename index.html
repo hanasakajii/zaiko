@@ -1,0 +1,1326 @@
+<!DOCTYPE html>
+
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>在庫管理システム</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f5f3;
+  --white: #ffffff;
+  --border: #e0e0e0;
+  --border2: #f0f0f0;
+  --text: #1a1a1a;
+  --text2: #666;
+  --text3: #aaa;
+  --accent: #1a1a1a;
+  --green: #2e7d32;
+  --green-bg: #f0faf0;
+  --green-border: #a5d6a7;
+  --yellow: #f57f17;
+  --yellow-bg: #fffde7;
+  --yellow-border: #ffe082;
+  --red: #c62828;
+  --red-bg: #fff5f5;
+  --red-border: #ef9a9a;
+  --blue: #1565c0;
+  --blue-bg: #e3f2fd;
+  --radius: 10px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  background: var(--bg);
+  font-family: 'Noto Sans JP', sans-serif;
+  font-size: 14px;
+  color: var(--text);
+  min-height: 100vh;
+}
+
+/* ===== LAYOUT ===== */
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+width: 200px; flex-shrink: 0;
+background: var(–white);
+border-right: 1px solid var(–border);
+display: flex; flex-direction: column;
+position: sticky; top: 0; height: 100vh;
+overflow-y: auto;
+}
+.sidebar-logo {
+padding: 20px 16px 16px;
+border-bottom: 1px solid var(–border);
+}
+.sidebar-logo h1 { font-size: 14px; font-weight: 700; }
+.sidebar-logo p { font-size: 11px; color: var(–text3); margin-top: 2px; }
+.nav { padding: 10px 8px; flex: 1; }
+.nav-section { font-size: 10px; font-weight: 700; color: var(–text3); letter-spacing: .08em; text-transform: uppercase; padding: 10px 8px 4px; }
+.nav-item {
+display: flex; align-items: center; gap: 9px;
+padding: 9px 10px; border-radius: 7px;
+cursor: pointer; color: var(–text2);
+font-size: 13px; font-weight: 500;
+transition: all .12s; margin-bottom: 1px;
+border: none; background: none; width: 100%; text-align: left;
+font-family: inherit;
+}
+.nav-item:hover { background: var(–bg); color: var(–text); }
+.nav-item.active { background: var(–text); color: var(–white); }
+.nav-item svg { width: 15px; height: 15px; flex-shrink: 0; }
+.main { flex: 1; overflow-y: auto; min-width: 0; }
+.page { display: none; padding: 28px 32px; max-width: 1100px; }
+.page.active { display: block; }
+
+/* ===== TYPOGRAPHY ===== */
+.page-title { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+.page-sub { font-size: 13px; color: var(–text2); margin-bottom: 24px; }
+.section-head {
+font-size: 11px; font-weight: 700; color: var(–text3);
+letter-spacing: .08em; text-transform: uppercase;
+margin-bottom: 10px; margin-top: 20px;
+}
+.section-head:first-child { margin-top: 0; }
+
+/* ===== CARD ===== */
+.card {
+background: var(–white);
+border: 1px solid var(–border);
+border-radius: var(–radius);
+padding: 18px 20px;
+margin-bottom: 16px;
+}
+.card-title { font-size: 12px; font-weight: 700; color: var(–text2); letter-spacing: .06em; text-transform: uppercase; margin-bottom: 14px; }
+
+/* ===== KPI ===== */
+.kpi-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 12px; margin-bottom: 20px; }
+.kpi { background: var(–white); border: 1px solid var(–border); border-radius: var(–radius); padding: 16px 18px; }
+.kpi-label { font-size: 11px; color: var(–text3); font-weight: 500; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 6px; }
+.kpi-value { font-size: 26px; font-weight: 700; font-family: ‘DM Mono’, monospace; }
+.kpi-value.k-warn { color: var(–yellow); }
+.kpi-value.k-ok { color: var(–green); }
+.kpi-value.k-danger { color: var(–red); }
+.kpi-value.k-blue { color: var(–blue); }
+
+/* ===== TABLE ===== */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; }
+th { text-align: left; padding: 9px 12px; font-size: 11px; font-weight: 700; color: var(–text3); letter-spacing: .06em; text-transform: uppercase; border-bottom: 1px solid var(–border); background: var(–bg); white-space: nowrap; }
+td { padding: 10px 12px; border-bottom: 1px solid var(–border2); font-size: 13px; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(–bg); }
+.mono { font-family: ‘DM Mono’, monospace; }
+
+/* ===== BADGE ===== */
+.badge { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+.badge-ok { background: var(–green-bg); color: var(–green); border: 1px solid var(–green-border); }
+.badge-warn { background: var(–yellow-bg); color: var(–yellow); border: 1px solid var(–yellow-border); }
+.badge-low { background: var(–red-bg); color: var(–red); border: 1px solid var(–red-border); }
+.badge-in { background: var(–blue-bg); color: var(–blue); border: 1px solid #90caf9; }
+.badge-out { background: var(–green-bg); color: var(–green); border: 1px solid var(–green-border); }
+
+/* ===== PROGRESS ===== */
+.prog-bar { background: var(–border); border-radius: 4px; height: 5px; width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; }
+.prog-fill { height: 100%; border-radius: 4px; }
+.prog-ok { background: var(–green); }
+.prog-warn { background: var(–yellow); }
+.prog-low { background: var(–red); }
+
+/* ===== FORM ===== */
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-size: 12px; font-weight: 500; color: var(–text2); }
+.form-group select, .form-group input {
+background: var(–white); border: 1px solid var(–border);
+color: var(–text); border-radius: 7px; padding: 9px 11px;
+font-size: 13px; font-family: inherit; outline: none;
+transition: border-color .12s;
+}
+.form-group select:focus, .form-group input:focus { border-color: var(–text); }
+
+/* ===== BTN ===== */
+.btn { padding: 9px 20px; border-radius: 7px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .12s; }
+.btn-primary { background: var(–text); color: var(–white); }
+.btn-primary:hover { background: #333; }
+.btn-secondary { background: var(–bg); color: var(–text2); border: 1px solid var(–border); }
+.btn-secondary:hover { color: var(–text); }
+.btn-danger { background: var(–red-bg); color: var(–red); border: 1px solid var(–red-border); }
+.btn-sm { padding: 5px 12px; font-size: 11px; }
+
+/* ===== FILTER ===== */
+.filter-bar { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center; }
+.filter-bar select, .filter-bar input {
+background: var(–white); border: 1px solid var(–border);
+color: var(–text); border-radius: 7px; padding: 7px 11px;
+font-size: 13px; font-family: inherit; outline: none;
+}
+.filter-bar select:focus, .filter-bar input:focus { border-color: var(–text); }
+
+/* ===== ALERT MSG ===== */
+.msg-ok { background: var(–green-bg); border: 1px solid var(–green-border); color: var(–green); padding: 10px 14px; border-radius: 7px; font-size: 13px; margin-bottom: 12px; }
+.msg-err { background: var(–red-bg); border: 1px solid var(–red-border); color: var(–red); padding: 10px 14px; border-radius: 7px; font-size: 13px; margin-bottom: 12px; }
+
+/* ===== ORDER INPUT ===== */
+.order-header {
+background: var(–text); color: var(–white);
+border-radius: 10px 10px 0 0;
+padding: 13px 16px;
+display: flex; justify-content: space-between; align-items: center;
+}
+.order-header h3 { font-size: 14px; font-weight: 700; }
+.order-table { background: var(–white); border: 1px solid var(–border); border-top: none; border-radius: 0 0 10px 10px; overflow: hidden; margin-bottom: 14px; }
+.order-sec-head { background: var(–bg); padding: 7px 14px; font-size: 11px; font-weight: 700; color: var(–text3); letter-spacing: .06em; border-top: 1px solid var(–border2); }
+.order-row { display: grid; grid-template-columns: 1fr 90px 80px; align-items: center; border-top: 1px solid var(–border2); padding: 0 14px; min-height: 46px; }
+.order-row:first-child { border-top: none; }
+.order-row.filled { background: var(–green-bg); }
+.order-name { font-size: 13px; }
+.order-base { font-size: 12px; color: var(–text3); text-align: center; }
+.order-qty { width: 58px; border: 1px solid var(–border); border-radius: 6px; padding: 5px 8px; font-size: 14px; font-weight: 700; text-align: center; font-family: inherit; outline: none; }
+.order-qty:focus { border-color: var(–text); }
+.order-qty.has-val { border-color: var(–green); color: var(–green); background: var(–green-bg); }
+
+.free-table { background: var(–white); border: 1px solid var(–border); border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.free-head { background: var(–text); color: var(–white); padding: 11px 14px; font-size: 13px; font-weight: 700; }
+.free-row { display: grid; grid-template-columns: 1fr 70px 28px; gap: 8px; align-items: center; padding: 8px 12px; border-top: 1px solid var(–border2); }
+.free-input { border: 1px solid var(–border); border-radius: 6px; padding: 7px 9px; font-size: 13px; font-family: inherit; outline: none; width: 100%; }
+.free-input:focus { border-color: var(–text); }
+.free-qty { border: 1px solid var(–border); border-radius: 6px; padding: 7px 8px; font-size: 13px; font-weight: 700; text-align: center; font-family: inherit; outline: none; width: 100%; }
+.free-qty:focus { border-color: var(–text); }
+.del-btn { background: none; border: none; cursor: pointer; color: var(–text3); font-size: 17px; padding: 3px; transition: color .12s; }
+.del-btn:hover { color: var(–red); }
+.add-free-btn { display: flex; align-items: center; gap: 5px; background: none; border: 1px dashed var(–border); border-radius: 6px; padding: 7px 12px; font-size: 13px; color: var(–text3); cursor: pointer; font-family: inherit; margin: 8px 12px; width: calc(100% - 24px); transition: all .12s; }
+.add-free-btn:hover { border-color: var(–text); color: var(–text); }
+
+/* ===== STEP ===== */
+.step-bar { display: flex; background: var(–white); border-bottom: 1px solid var(–border); padding: 0 32px; position: sticky; top: 0; z-index: 10; }
+.step { padding: 11px 14px; font-size: 12px; font-weight: 700; color: var(–text3); border-bottom: 2px solid transparent; display: flex; align-items: center; gap: 6px; }
+.step.active { color: var(–text); border-bottom-color: var(–text); }
+.step.done { color: var(–green); }
+.step-num { width: 18px; height: 18px; border-radius: 50%; background: var(–bg); display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; }
+.step.active .step-num { background: var(–text); color: var(–white); }
+.step.done .step-num { background: var(–green); color: var(–white); }
+
+/* ===== ORDER CONFIRM ===== */
+.confirm-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 14px; border-top: 1px solid var(–border2); font-size: 13px; }
+.confirm-row:first-child { border-top: none; }
+.confirm-qty { font-weight: 700; font-family: ‘DM Mono’; }
+.free-tag { font-size: 10px; color: var(–text3); background: var(–bg); border-radius: 3px; padding: 1px 5px; margin-left: 5px; }
+
+/* ===== DONE ===== */
+.done-box { text-align: center; padding: 48px 24px; background: var(–white); border-radius: 12px; border: 1px solid var(–border); }
+.done-icon { font-size: 44px; margin-bottom: 14px; }
+.done-box h2 { font-size: 18px; font-weight: 700; margin-bottom: 6px; }
+.done-box p { font-size: 13px; color: var(–text2); margin-bottom: 20px; }
+
+/* ===== ANALYSIS ===== */
+.analysis-period-btn { padding: 7px 16px; border-radius: 20px; border: 1px solid var(–border); background: var(–white); font-size: 12px; font-weight: 700; cursor: pointer; font-family: inherit; transition: all .12s; color: var(–text2); }
+.analysis-period-btn.active { background: var(–text); color: var(–white); border-color: var(–text); }
+
+/* ===== HISTORY TOGGLE ===== */
+.hist-head { padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; cursor: pointer; border-bottom: 1px solid var(–border2); }
+.hist-head h3 { font-size: 14px; font-weight: 700; }
+.hist-head span { font-size: 12px; color: var(–text3); }
+
+/* ===== TOAST ===== */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(–text); color: var(–white); padding: 11px 22px; border-radius: 22px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity .25s; white-space: nowrap; z-index: 200; pointer-events: none; }
+.toast.show { opacity: 1; }
+
+/* ===== SCREEN in order page ===== */
+.order-screen { display: none; }
+.order-screen.active { display: block; }
+
+/* ===== STORE SELECT ===== */
+.store-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 20px; }
+.store-btn { background: var(–white); border: 1px solid var(–border); border-radius: 8px; padding: 12px 8px; text-align: center; font-size: 13px; font-weight: 500; cursor: pointer; font-family: inherit; transition: all .12s; line-height: 1.4; }
+.store-btn:hover { border-color: var(–text); }
+.store-btn.selected { border-color: var(–text); border-width: 2px; background: var(–text); color: var(–white); }
+.store-area { font-size: 10px; color: var(–text3); margin-bottom: 2px; }
+.store-btn.selected .store-area { color: #aaa; }
+
+/* ===== BOTTOM BAR (order) ===== */
+.order-bottom { background: var(–white); border-top: 1px solid var(–border); padding: 12px 16px; display: flex; gap: 8px; justify-content: flex-end; position: sticky; bottom: 0; }
+
+/* ===== SUMMARY TABLE ===== */
+.summary-tbl th, .summary-tbl td { padding: 7px 10px; white-space: nowrap; }
+.summary-tbl td:first-child { white-space: normal; }
+
+@media (max-width: 900px) {
+.sidebar { width: 56px; }
+.sidebar-logo p, .nav-item span, .nav-section { display: none; }
+.sidebar-logo h1 { font-size: 18px; }
+.page { padding: 20px 16px; }
+.kpi-row { grid-template-columns: 1fr 1fr; }
+.store-grid { grid-template-columns: repeat(3,1fr); }
+}
+</style>
+
+</head>
+<body>
+<div class="app">
+
+<!-- ===== SIDEBAR ===== -->
+
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>📦</h1>
+    <p>在庫管理システム</p>
+  </div>
+  <div class="nav">
+    <div class="nav-section">概要</div>
+    <button class="nav-item active" onclick="nav('dashboard',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      <span>ダッシュボード</span>
+    </button>
+    <div class="nav-section">在庫</div>
+    <button class="nav-item" onclick="nav('stock',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+      <span>在庫一覧</span>
+    </button>
+    <button class="nav-item" onclick="nav('inbound',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+      <span>入庫記録</span>
+    </button>
+    <button class="nav-item" onclick="nav('log',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      <span>入出庫ログ</span>
+    </button>
+    <div class="nav-section">注文</div>
+    <button class="nav-item" onclick="nav('order',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      <span>注文票入力</span>
+    </button>
+    <div class="nav-section">分析</div>
+    <button class="nav-item" onclick="nav('analysis',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      <span>消費分析</span>
+    </button>
+    <div class="nav-section">設定</div>
+    <button class="nav-item" onclick="nav('master',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+      <span>マスタ設定</span>
+    </button>
+  </div>
+</nav>
+
+<!-- ===== MAIN ===== -->
+
+<div class="main">
+
+<!-- ====== DASHBOARD ====== -->
+
+<div class="page active" id="page-dashboard">
+  <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;">
+    <div class="page-title">ダッシュボード</div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px;" onclick="syncFromCloud()">☁️ 読み込み</button>
+      <button class="btn btn-secondary" style="font-size:11px;padding:6px 12px;" onclick="syncToCloud()">☁️ 保存</button>
+    </div>
+  </div>
+  <div class="page-sub" id="dash-sub"></div>
+  <div class="kpi-row" id="kpi-row"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <div class="card">
+      <div class="card-title">在庫アラート（最低在庫数を下回る商品）</div>
+      <div id="dash-alerts"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">最近の注文票入力</div>
+      <div id="dash-recent"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ====== STOCK ====== -->
+
+<div class="page" id="page-stock">
+  <div class="page-title">在庫一覧</div>
+  <div class="page-sub">倉庫の現在在庫</div>
+  <div class="filter-bar">
+    <input type="text" id="stock-q" placeholder="商品名で検索…" oninput="renderStock()" style="width:180px;">
+    <select id="stock-f" onchange="renderStock()">
+      <option value="all">すべて</option>
+      <option value="low">要発注のみ</option>
+      <option value="ok">正常のみ</option>
+    </select>
+  </div>
+  <div class="card" style="padding:0;">
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>商品名</th><th>最低在庫数</th><th>現在残数</th><th>状態</th><th>充足率</th><th>単位</th></tr></thead>
+      <tbody id="stock-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ====== INBOUND ====== -->
+
+<div class="page" id="page-inbound">
+  <div class="page-title">入庫記録</div>
+  <div class="page-sub">倉庫への仕入れ・入庫</div>
+  <div class="card" style="max-width:520px;">
+    <div id="ib-msg"></div>
+    <div class="form-row">
+      <div class="form-group"><label>日付</label><input type="date" id="ib-date"></div>
+      <div class="form-group"><label>商品</label><select id="ib-product"></select></div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>入庫数量</label><input type="number" id="ib-qty" min="1" placeholder="例：10"></div>
+      <div class="form-group"><label>備考</label><input type="text" id="ib-note" placeholder="任意"></div>
+    </div>
+    <button class="btn btn-primary" onclick="recordInbound()">入庫を記録する</button>
+  </div>
+</div>
+
+<!-- ====== LOG ====== -->
+
+<div class="page" id="page-log">
+  <div class="page-title">入出庫ログ</div>
+  <div class="page-sub">全入出庫履歴</div>
+  <div class="filter-bar">
+    <select id="log-store" onchange="renderLog()"><option value="all">全店舗</option></select>
+    <select id="log-type" onchange="renderLog()">
+      <option value="all">入出庫すべて</option>
+      <option value="in">入庫のみ</option>
+      <option value="out">出庫のみ</option>
+    </select>
+    <input type="text" id="log-q" placeholder="商品名で検索…" oninput="renderLog()" style="width:160px;">
+  </div>
+  <div class="card" style="padding:0;">
+    <div class="tbl-wrap"><table>
+      <thead><tr><th>日付</th><th>店舗</th><th>商品名</th><th>区分</th><th>数量</th><th>備考</th></tr></thead>
+      <tbody id="log-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<!-- ====== ORDER ====== -->
+
+<div class="page" id="page-order">
+  <div class="page-title">注文票入力</div>
+
+  <!-- Step bar -->
+
+  <div class="step-bar" style="margin: -28px -32px 24px; padding: 0 32px;">
+    <div class="step active" id="ostep1"><div class="step-num">1</div>店舗・月</div>
+    <div class="step" id="ostep2"><div class="step-num">2</div>数量入力</div>
+    <div class="step" id="ostep3"><div class="step-num">3</div>確認・送信</div>
+  </div>
+
+  <!-- Screen 1 -->
+
+  <div class="order-screen active" id="oscreen-1">
+    <div class="section-head">対象月</div>
+    <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
+      <label style="font-size:13px;font-weight:500;white-space:nowrap;">月を選択</label>
+      <input type="month" id="o-month" style="border:1px solid var(--border);border-radius:7px;padding:8px 11px;font-size:13px;font-family:inherit;outline:none;">
+    </div>
+    <div class="section-head">店舗を選択</div>
+    <div class="store-grid" id="o-store-grid"></div>
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn btn-primary" id="o-btn1" onclick="oToScreen2()" disabled>数量入力へ →</button>
+    </div>
+  </div>
+
+  <!-- Screen 2 -->
+
+  <div class="order-screen" id="oscreen-2">
+    <div class="order-header">
+      <h3 id="o-form-title">--</h3>
+      <span id="o-count" style="font-size:12px;color:#aaa;">0品目入力済み</span>
+    </div>
+    <div class="order-table" id="o-table"></div>
+    <div class="free-table">
+      <div class="free-head">手書き追加（毎月出ない商品）</div>
+      <div id="o-free-rows"></div>
+      <button class="add-free-btn" onclick="oAddFree()">＋ 行を追加</button>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px;">
+      <button class="btn btn-secondary" onclick="oToScreen1()">← 戻る</button>
+      <button class="btn btn-primary" onclick="oToScreen3()">確認へ →</button>
+    </div>
+  </div>
+
+  <!-- Screen 3 -->
+
+  <div class="order-screen" id="oscreen-3">
+    <div class="card" style="padding:0;">
+      <div style="background:var(--text);color:var(--white);padding:12px 16px;border-radius:10px 10px 0 0;font-size:14px;font-weight:700;" id="o-confirm-title">確認</div>
+      <div id="o-confirm-body"></div>
+    </div>
+    <!-- 倉庫残数チェック -->
+    <div class="card" style="padding:0;margin-top:0;">
+      <div style="background:var(--bg);padding:10px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2);">倉庫残数（参考）</div>
+      <div id="o-stock-check"></div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:12px;">
+      <button class="btn btn-secondary" onclick="oToScreen2()">← 戻る</button>
+      <button class="btn btn-primary" onclick="oSubmit()">送信する ✓</button>
+    </div>
+  </div>
+
+  <!-- Screen 4 done -->
+
+  <div class="order-screen" id="oscreen-4">
+    <div class="done-box">
+      <div class="done-icon">✅</div>
+      <h2 id="o-done-title">送信完了</h2>
+      <p id="o-done-sub"></p>
+      <button class="btn btn-primary" onclick="oReset()">次の店舗を入力する</button>
+    </div>
+  </div>
+</div>
+
+<!-- ====== ANALYSIS ====== -->
+
+<div class="page" id="page-analysis">
+  <div class="page-title">消費分析</div>
+  <div class="page-sub">注文票データから集計した消費数</div>
+
+  <div style="display:flex;gap:6px;margin-bottom:20px;flex-wrap:wrap;">
+    <button class="analysis-period-btn active" onclick="setPeriod(1,this)">今月</button>
+    <button class="analysis-period-btn" onclick="setPeriod(3,this)">3ヶ月</button>
+    <button class="analysis-period-btn" onclick="setPeriod(6,this)">半年</button>
+    <button class="analysis-period-btn" onclick="setPeriod(12,this)">1年</button>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+    <div class="card">
+      <div class="card-title" id="analysis-period-label">今月の消費ランキング</div>
+      <div id="analysis-rank"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">倉庫残数との比較（残少商品）</div>
+      <div id="analysis-stockcheck"></div>
+    </div>
+  </div>
+
+  <div class="card" style="padding:0;">
+    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <div class="card-title" style="margin:0;">月別消費集計</div>
+      <div style="display:flex;gap:6px;">
+        <input type="text" id="analysis-q" placeholder="商品名で絞り込み…" oninput="renderAnalysis()" style="border:1px solid var(--border);border-radius:6px;padding:5px 10px;font-size:12px;font-family:inherit;outline:none;width:160px;">
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table class="summary-tbl">
+        <thead id="analysis-thead"></thead>
+        <tbody id="analysis-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ====== MASTER ====== -->
+
+<div class="page" id="page-master">
+  <div class="page-title">マスタ設定</div>
+  <div class="page-sub">商品・店舗の管理</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+    <!-- Products -->
+    <div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">商品を追加</div>
+        <div id="pm-msg"></div>
+        <div class="form-row">
+          <div class="form-group"><label>商品名</label><input type="text" id="pm-name" placeholder="商品名"></div>
+          <div class="form-group"><label>最低在庫数</label><input type="number" id="pm-base" min="0" placeholder="例：50"></div>
+        </div>
+        <div class="form-row">
+          <div class="form-group"><label>倉庫残数（初期）</label><input type="number" id="pm-stock" min="0" placeholder="例：30"></div>
+          <div class="form-group"><label>単位（任意）</label><input type="text" id="pm-unit" placeholder="例：１箱"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addProduct()">追加</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2);display:flex;justify-content:space-between;align-items:center;">
+          <span>商品一覧</span>
+          <span style="font-size:11px;color:var(--text3);font-weight:400;">数値列は直接編集できます</span>
+        </div>
+        <div id="pm-msg-stock"></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>商品名</th><th>最低在庫数</th><th>現在残数</th><th>単位</th><th></th></tr></thead>
+          <tbody id="pm-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+    <!-- Stores -->
+    <div>
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">店舗を追加</div>
+        <div id="sm-msg"></div>
+        <div class="form-row">
+          <div class="form-group"><label>店舗名</label><input type="text" id="sm-name" placeholder="店舗名"></div>
+          <div class="form-group"><label>エリア</label><input type="text" id="sm-area" placeholder="例：久留米"></div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="addStore()">追加</button>
+      </div>
+      <div class="card" style="padding:0;">
+        <div style="padding:12px 16px;border-bottom:1px solid var(--border);font-size:12px;font-weight:700;color:var(--text2);">店舗一覧</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>コード</th><th>店舗名</th><th>エリア</th><th></th></tr></thead>
+          <tbody id="sm-tbody"></tbody>
+        </table></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+</div><!-- /app -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ===================== MASTER DATA =====================
+const INIT_PRODUCTS = [
+  {name:"シャンプー",base:10,stock:3,unit:""},
+  {name:"リンス",base:10,stock:6,unit:""},
+  {name:"シェービングソープ",base:50,stock:34,unit:""},
+  {name:"プレシェーブ",base:50,stock:50,unit:""},
+  {name:"乳液",base:50,stock:50,unit:""},
+  {name:"カラー剤 N2",base:100,stock:98,unit:"１ケース(６本)"},
+  {name:"カラー剤 N3",base:100,stock:98,unit:"１ケース(６本)"},
+  {name:"カラー剤 N4",base:100,stock:97,unit:"１ケース(６本)"},
+  {name:"カラー剤 N5",base:100,stock:98,unit:"１ケース(６本)"},
+  {name:"カラー剤 N6",base:100,stock:98,unit:"１ケース(６本)"},
+  {name:"カラー剤 N7",base:100,stock:99,unit:"１ケース(６本)"},
+  {name:"カラー剤 N8",base:100,stock:99,unit:"１ケース(６本)"},
+  {name:"白髪ぼかし",base:100,stock:84,unit:"１ケース(６本)"},
+  {name:"オキシ３％",base:50,stock:50,unit:""},
+  {name:"オキシ６％",base:50,stock:45,unit:""},
+  {name:"トニック",base:50,stock:41,unit:""},
+  {name:"バイタリス",base:50,stock:50,unit:""},
+  {name:"ムース",base:50,stock:50,unit:""},
+  {name:"ワックス",base:50,stock:47,unit:""},
+  {name:"ジェル",base:50,stock:45,unit:""},
+  {name:"ラップ",base:50,stock:45,unit:""},
+  {name:"サボニーズ",base:50,stock:46,unit:""},
+  {name:"ヘアクリーム",base:50,stock:44,unit:""},
+  {name:"ヘアスプレー",base:50,stock:47,unit:""},
+  {name:"リムーバー",base:30,stock:28,unit:""},
+  {name:"耳キャップ",base:30,stock:30,unit:"１箱"},
+  {name:"コットン",base:30,stock:27,unit:""},
+  {name:"打ち粉",base:30,stock:28,unit:""},
+  {name:"パウダー",base:30,stock:28,unit:""},
+  {name:"エタノール",base:30,stock:28,unit:""},
+  {name:"トイレットペーパー",base:20,stock:6,unit:""},
+  {name:"ティッシュペーパー",base:20,stock:13,unit:""},
+  {name:"カビキラー",base:10,stock:10,unit:""},
+  {name:"洗濯洗剤",base:10,stock:6,unit:""},
+  {name:"柔軟剤",base:10,stock:7,unit:""},
+  {name:"アルコール消毒",base:5,stock:5,unit:""},
+  {name:"ボールペン",base:50,stock:47,unit:""},
+  {name:"ノート",base:50,stock:46,unit:""},
+  {name:"トイレ洗剤",base:10,stock:6,unit:""},
+  {name:"食器洗剤",base:10,stock:8,unit:""},
+  {name:"ハイター",base:10,stock:8,unit:""},
+  {name:"クレンザー",base:10,stock:10,unit:""},
+  {name:"パイプクリーナー",base:10,stock:10,unit:""},
+  {name:"消臭スプレー",base:10,stock:8,unit:""},
+  {name:"リベラールCMCシャンプー",base:10,stock:7,unit:""},
+  {name:"カットクロス",base:10,stock:10,unit:""},
+  {name:"シャンプークロス",base:10,stock:5,unit:""},
+  {name:"ひげブラシ",base:10,stock:5,unit:""},
+  {name:"白タオル",base:10,stock:5,unit:"１ダース(12枚)"},
+  {name:"蒸しタオル",base:10,stock:8,unit:"１ダース(12枚)"},
+  {name:"アイロン液",base:10,stock:8,unit:""},
+  {name:"券売機ロール",base:10,stock:6,unit:""},
+  {name:"テックス",base:10,stock:9,unit:""},
+  {name:"カラー用手袋",base:10,stock:9,unit:""},
+  {name:"ハンドペーパー",base:10,stock:8,unit:""},
+  {name:"キャップ",base:10,stock:10,unit:"1箱"},
+  {name:"ウサギポット",base:10,stock:10,unit:""},
+  {name:"バリカンブラシ",base:10,stock:5,unit:""},
+  {name:"エアダスター",base:10,stock:0,unit:""},
+  {name:"柳川市もえるゴミ袋（120ℓ）",base:0,stock:0,unit:""},
+  {name:"スポンジ",base:0,stock:0,unit:""},
+  {name:"リベラールCMCシャンプー",base:10,stock:7,unit:""},
+  {name:"リベラールCMCリンス",base:10,stock:9,unit:""},
+  {name:"VO5(大）",base:0,stock:0,unit:""},
+  {name:"VO5(小）",base:0,stock:0,unit:""},
+  {name:"アイパー液",base:10,stock:3,unit:""},
+  {name:"フェイシャルクリーム",base:0,stock:0,unit:""},
+  {name:"チオWH1",base:0,stock:0,unit:""},
+  {name:"ノーマルWN1",base:0,stock:0,unit:""},
+  {name:"WH2P",base:0,stock:0,unit:""},
+  {name:"カラー刷毛ブラシ",base:0,stock:0,unit:""},
+  {name:"まめピカ",base:0,stock:0,unit:""},
+  {name:"ハンドソープ",base:10,stock:9,unit:""},
+  {name:"芳香剤",base:10,stock:0,unit:""},
+  {name:"スプレイヤー",base:0,stock:0,unit:""},
+  {name:"ほうき",base:0,stock:0,unit:""},
+  {name:"ドライヤー",base:0,stock:0,unit:""},
+];
+
+// 1〜3月の初期注文データ
+const INIT_ORDERS = [{"id":1700000001000,"store":"みやき","month":"2026-01","items":[{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"カラー剤 N5","qty":2,"type":"fixed"},{"name":"食器洗剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":12,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":3,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000002000,"store":"久留米","month":"2026-01","items":[{"name":"ティッシュペーパー","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"ヘアクリーム","qty":3,"type":"fixed"},{"name":"ヘアスプレー","qty":3,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000003000,"store":"八女","month":"2026-01","items":[{"name":"ウサギポット","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カラー剤 N4","qty":1,"type":"fixed"},{"name":"カラー剤 N6","qty":2,"type":"fixed"},{"name":"カラー剤 N7","qty":1,"type":"fixed"},{"name":"カラー剤 N8","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":8,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"ティッシュペーパー","qty":4,"type":"fixed"},{"name":"トイレットペーパー","qty":1,"type":"fixed"},{"name":"トニック","qty":1,"type":"fixed"},{"name":"蒸しタオル","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000004000,"store":"十三部","month":"2026-01","items":[{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"券売機ロール","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"パウダー","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000005000,"store":"善導寺","month":"2026-01","items":[{"name":"シェービングソープ","qty":8,"type":"fixed"},{"name":"シャンプークロス","qty":5,"type":"fixed"},{"name":"洗濯洗剤","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"ひげブラシ","qty":5,"type":"fixed"},{"name":"ヘアクリーム","qty":3,"type":"fixed"},{"name":"リベラールCMCシャンプー","qty":1,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"},{"name":"ワックス","qty":3,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000006000,"store":"四ツ山","month":"2026-01","items":[{"name":"アイパー液","qty":2,"type":"fixed"},{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"エタノール","qty":1,"type":"fixed"},{"name":"オキシ３％","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":4,"type":"fixed"},{"name":"コットン","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":2,"type":"fixed"},{"name":"シャンプークロス","qty":3,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"白タオル","qty":5,"type":"fixed"},{"name":"洗濯洗剤","qty":3,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":2,"type":"fixed"},{"name":"ヘアスプレー","qty":2,"type":"fixed"},{"name":"ラップ","qty":4,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000007000,"store":"小森野","month":"2026-01","items":[{"name":"サボニーズ","qty":4,"type":"fixed"},{"name":"ジェル","qty":3,"type":"fixed"},{"name":"シャンプー","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":3,"type":"fixed"},{"name":"ラップ","qty":3,"type":"fixed"},{"name":"リベラールCMCシャンプー","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000008000,"store":"柳川","month":"2026-01","items":[{"name":"エタノール","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"クレンザー","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":4,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000009000,"store":"柳川美容","month":"2026-01","items":[{"name":"エタノール","qty":1,"type":"fixed"},{"name":"コットン","qty":2,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"スポンジ","qty":2,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":1,"type":"fixed"},{"name":"ノート","qty":1,"type":"fixed"},{"name":"ハイター","qty":1,"type":"fixed"},{"name":"ボールペン","qty":3,"type":"fixed"},{"name":"柳川市もえるゴミ袋（120ℓ）","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000010000,"store":"柳川駅前","month":"2026-01","items":[{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カラー用手袋","qty":1,"type":"fixed"},{"name":"カラー剤 N5","qty":2,"type":"fixed"},{"name":"キャップ","qty":1,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"コットン","qty":1,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"乳液","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"耳キャップ","qty":1,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000011000,"store":"津福","month":"2026-01","items":[{"name":"エタノール","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":2,"type":"fixed"},{"name":"カラー剤 N4","qty":2,"type":"fixed"},{"name":"券売機ロール","qty":2,"type":"fixed"},{"name":"シャンプー","qty":3,"type":"fixed"},{"name":"ティッシュペーパー","qty":2,"type":"fixed"},{"name":"トイレットペーパー","qty":3,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"ノート","qty":4,"type":"fixed"},{"name":"バリカンブラシ","qty":5,"type":"fixed"},{"name":"ハンドペーパー","qty":2,"type":"fixed"},{"name":"リンス","qty":3,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000012000,"store":"築町","month":"2026-01","items":[{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カラー用手袋","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":4,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"テックス","qty":1,"type":"fixed"},{"name":"ハイター","qty":1,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"}],"createdAt":"2026-01-10T00:00:00.000Z"},{"id":1700000013000,"store":"みやき","month":"2026-02","items":[{"name":"アイパー液","qty":1,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"ティッシュペーパー","qty":1,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"乳液","qty":2,"type":"fixed"},{"name":"ハンドペーパー","qty":2,"type":"fixed"},{"name":"ムース","qty":3,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000014000,"store":"久留米","month":"2026-02","items":[{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"エタノール","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":3,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"カラー剤 N3","qty":2,"type":"fixed"},{"name":"カラー剤 N4","qty":2,"type":"fixed"},{"name":"カラー剤 N5","qty":2,"type":"fixed"},{"name":"サボニーズ","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"乳液","qty":3,"type":"fixed"},{"name":"ノート","qty":1,"type":"fixed"},{"name":"バイタリス","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"パウダー","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":2,"type":"fixed"},{"name":"ヘアクリーム","qty":2,"type":"fixed"},{"name":"ヘアスプレー","qty":2,"type":"fixed"},{"name":"ハンドペーパー","qty":2,"type":"fixed"},{"name":"ほうき","qty":3,"type":"fixed"},{"name":"ムース","qty":2,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リムーバー","qty":1,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000015000,"store":"八女","month":"2026-02","items":[{"name":"オキシ６％","qty":4,"type":"fixed"},{"name":"カビキラー","qty":2,"type":"fixed"},{"name":"カラー剤 N4","qty":1,"type":"fixed"},{"name":"カラー剤 N5","qty":1,"type":"fixed"},{"name":"コットン","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":1,"type":"fixed"},{"name":"ドライヤー","qty":2,"type":"fixed"},{"name":"ノーマルWN1","qty":1,"type":"fixed"},{"name":"ハンドソープ","qty":1,"type":"fixed"},{"name":"ラップ","qty":3,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000016000,"store":"十三部","month":"2026-02","items":[{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":4,"type":"fixed"},{"name":"カラー剤 N2","qty":4,"type":"fixed"},{"name":"カラー剤 N3","qty":3,"type":"fixed"},{"name":"カラー剤 N4","qty":3,"type":"fixed"},{"name":"シェービングソープ","qty":4,"type":"fixed"},{"name":"ジェル","qty":3,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":3,"type":"fixed"},{"name":"トニック","qty":2,"type":"fixed"},{"name":"ひげブラシ","qty":6,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000017000,"store":"善導寺","month":"2026-02","items":[{"name":"カラー剤 N4","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":4,"type":"fixed"},{"name":"ジェル","qty":3,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":2,"type":"fixed"},{"name":"耳キャップ","qty":1,"type":"fixed"},{"name":"ムース","qty":3,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000018000,"store":"四ツ山","month":"2026-02","items":[{"name":"アイパー液","qty":3,"type":"fixed"},{"name":"打ち粉","qty":1,"type":"fixed"},{"name":"エタノール","qty":1,"type":"fixed"},{"name":"オキシ３％","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":7,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"洗濯洗剤","qty":3,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":1,"type":"fixed"},{"name":"ヘアスプレー","qty":2,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"},{"name":"ワックス","qty":4,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000019000,"store":"小森野","month":"2026-02","items":[{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":5,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"ワックス","qty":4,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000020000,"store":"柳川","month":"2026-02","items":[{"name":"打ち粉","qty":1,"type":"fixed"},{"name":"エタノール","qty":1,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トニック","qty":1,"type":"fixed"},{"name":"パウダー","qty":1,"type":"fixed"},{"name":"ムース","qty":2,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000021000,"store":"柳川美容","month":"2026-02","items":[{"name":"WH2P","qty":5,"type":"fixed"},{"name":"オキシ６％","qty":3,"type":"fixed"},{"name":"カラー刷毛ブラシ","qty":5,"type":"fixed"},{"name":"カラー剤 N5","qty":1,"type":"fixed"},{"name":"カラー剤 N6","qty":3,"type":"fixed"},{"name":"カラー剤 N7","qty":3,"type":"fixed"},{"name":"カラー剤 N8","qty":2,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"コットン","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":3,"type":"fixed"},{"name":"チオWH1","qty":3,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"ノーマルWN1","qty":3,"type":"fixed"},{"name":"ハイター","qty":2,"type":"fixed"},{"name":"まめピカ","qty":2,"type":"fixed"},{"name":"ラップ","qty":5,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000022000,"store":"柳川駅前","month":"2026-02","items":[{"name":"VO5(小）","qty":1,"type":"fixed"},{"name":"VO5(大）","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":1,"type":"fixed"},{"name":"コットン","qty":2,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"ノート","qty":1,"type":"fixed"},{"name":"フェイシャルクリーム","qty":1,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000023000,"store":"津福","month":"2026-02","items":[{"name":"VO5(小）","qty":1,"type":"fixed"},{"name":"VO5(大）","qty":1,"type":"fixed"},{"name":"ウサギポット","qty":1,"type":"fixed"},{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"エアダスター","qty":1,"type":"fixed"},{"name":"エタノール","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":3,"type":"fixed"},{"name":"カラー剤 N4","qty":3,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"ジェル","qty":3,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":1,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":3,"type":"fixed"},{"name":"スプレイヤー","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":2,"type":"fixed"},{"name":"テックス","qty":1,"type":"fixed"},{"name":"トイレットペーパー","qty":3,"type":"fixed"},{"name":"トニック","qty":4,"type":"fixed"},{"name":"乳液","qty":3,"type":"fixed"},{"name":"ノート","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"パウダー","qty":2,"type":"fixed"},{"name":"ハンドペーパー","qty":2,"type":"fixed"},{"name":"ひげブラシ","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"ヘアクリーム","qty":3,"type":"fixed"},{"name":"耳キャップ","qty":1,"type":"fixed"},{"name":"ムース","qty":3,"type":"fixed"},{"name":"リムーバー","qty":1,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"},{"name":"ワックス","qty":3,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000024000,"store":"築町","month":"2026-02","items":[{"name":"カラー用手袋","qty":1,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"ハイター","qty":2,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-02-10T00:00:00.000Z"},{"id":1700000025000,"store":"みやき","month":"2026-03","items":[{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カビキラー","qty":2,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"カラー剤 N3","qty":3,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"プレシェーブ","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000026000,"store":"久留米","month":"2026-03","items":[{"name":"打ち粉","qty":1,"type":"fixed"},{"name":"エアダスター","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カビキラー","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":4,"type":"fixed"},{"name":"ジェル","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"洗濯洗剤","qty":2,"type":"fixed"},{"name":"トイレットペーパー","qty":1,"type":"fixed"},{"name":"トイレ洗剤","qty":2,"type":"fixed"},{"name":"乳液","qty":4,"type":"fixed"},{"name":"ノート","qty":1,"type":"fixed"},{"name":"バイタリス","qty":1,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"パウダー","qty":1,"type":"fixed"},{"name":"ハンドペーパー","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":1,"type":"fixed"},{"name":"ヘアクリーム","qty":1,"type":"fixed"},{"name":"ムース","qty":1,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リムーバー","qty":1,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000027000,"store":"八女","month":"2026-03","items":[{"name":"WH2P","qty":1,"type":"fixed"},{"name":"打ち粉","qty":1,"type":"fixed"},{"name":"カラー剤 N7","qty":1,"type":"fixed"},{"name":"カラー剤 N8","qty":1,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"ティッシュペーパー","qty":1,"type":"fixed"},{"name":"トイレ洗剤","qty":1,"type":"fixed"},{"name":"トニック","qty":1,"type":"fixed"},{"name":"乳液","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":2,"type":"fixed"},{"name":"ムース","qty":1,"type":"fixed"},{"name":"ワックス","qty":1,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000028000,"store":"十三部","month":"2026-03","items":[{"name":"エアダスター","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"トイレットペーパー","qty":1,"type":"fixed"},{"name":"トイレ洗剤","qty":2,"type":"fixed"},{"name":"乳液","qty":4,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"リンス","qty":1,"type":"fixed"},{"name":"ワックス","qty":5,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000029000,"store":"善導寺","month":"2026-03","items":[{"name":"エアダスター","qty":2,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":1,"type":"fixed"},{"name":"ノート","qty":2,"type":"fixed"},{"name":"ラップ","qty":1,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000030000,"store":"小森野","month":"2026-03","items":[{"name":"エアダスター","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カビキラー","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":2,"type":"fixed"},{"name":"クレンザー","qty":2,"type":"fixed"},{"name":"券売機ロール","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":2,"type":"fixed"},{"name":"トニック","qty":2,"type":"fixed"},{"name":"乳液","qty":4,"type":"fixed"},{"name":"ノート","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":2,"type":"fixed"},{"name":"ハンドペーパー","qty":2,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"ラップ","qty":3,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000031000,"store":"新栄町","month":"2026-03","items":[{"name":"打ち粉","qty":2,"type":"fixed"},{"name":"エアダスター","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":1,"type":"fixed"},{"name":"カビキラー","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":2,"type":"fixed"},{"name":"サボニーズ","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"食器洗剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":2,"type":"fixed"},{"name":"トニック","qty":3,"type":"fixed"},{"name":"乳液","qty":4,"type":"fixed"},{"name":"ノート","qty":2,"type":"fixed"},{"name":"バイタリス","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":2,"type":"fixed"},{"name":"パウダー","qty":4,"type":"fixed"},{"name":"ハンドペーパー","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"ヘアクリーム","qty":2,"type":"fixed"},{"name":"ヘアスプレー","qty":2,"type":"fixed"},{"name":"ムース","qty":2,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"},{"name":"ワックス","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000032000,"store":"柳川","month":"2026-03","items":[{"name":"カラー剤 N3","qty":2,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"ジェル","qty":2,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"バイタリス","qty":2,"type":"fixed"},{"name":"ムース","qty":2,"type":"fixed"},{"name":"リムーバー","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000033000,"store":"柳川美容","month":"2026-03","items":[{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カラー剤 N6","qty":2,"type":"fixed"},{"name":"カラー剤 N7","qty":3,"type":"fixed"},{"name":"カラー剤 N8","qty":1,"type":"fixed"},{"name":"コットン","qty":2,"type":"fixed"},{"name":"柔軟剤","qty":1,"type":"fixed"},{"name":"消臭スプレー","qty":1,"type":"fixed"},{"name":"食器洗剤","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":4,"type":"fixed"},{"name":"ティッシュペーパー","qty":1,"type":"fixed"},{"name":"トイレ洗剤","qty":2,"type":"fixed"},{"name":"ノート","qty":1,"type":"fixed"},{"name":"芳香剤","qty":1,"type":"fixed"},{"name":"ラップ","qty":4,"type":"fixed"},{"name":"リベラールCMCシャンプー","qty":1,"type":"fixed"},{"name":"リベラールCMCリンス","qty":1,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000034000,"store":"柳川駅前","month":"2026-03","items":[{"name":"エアダスター","qty":1,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カビキラー","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"カラー剤 N3","qty":1,"type":"fixed"},{"name":"カラー用手袋","qty":2,"type":"fixed"},{"name":"カラー剤 N4","qty":1,"type":"fixed"},{"name":"カラー剤 N5","qty":1,"type":"fixed"},{"name":"カラー剤 N6","qty":1,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":8,"type":"fixed"},{"name":"シャンプー","qty":1,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"白髪ぼかし","qty":2,"type":"fixed"},{"name":"トイレットペーパー","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":1,"type":"fixed"},{"name":"トニック","qty":4,"type":"fixed"},{"name":"乳液","qty":4,"type":"fixed"},{"name":"バイタリス","qty":3,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":5,"type":"fixed"},{"name":"ヘアクリーム","qty":1,"type":"fixed"},{"name":"ヘアスプレー","qty":2,"type":"fixed"},{"name":"ハンドペーパー","qty":1,"type":"fixed"},{"name":"ムース","qty":5,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リムーバー","qty":1,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000035000,"store":"津福","month":"2026-03","items":[{"name":"エタノール","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":1,"type":"fixed"},{"name":"カラー剤 N3","qty":1,"type":"fixed"},{"name":"カラー剤 N4","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":5,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"食器洗剤","qty":1,"type":"fixed"},{"name":"白髪ぼかし","qty":1,"type":"fixed"},{"name":"洗濯洗剤","qty":5,"type":"fixed"},{"name":"トニック","qty":2,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"},{"id":1700000036000,"store":"築町","month":"2026-03","items":[{"name":"アイパー液","qty":1,"type":"fixed"},{"name":"打ち粉","qty":1,"type":"fixed"},{"name":"エアダスター","qty":2,"type":"fixed"},{"name":"オキシ６％","qty":2,"type":"fixed"},{"name":"カビキラー","qty":1,"type":"fixed"},{"name":"カラー剤 N2","qty":2,"type":"fixed"},{"name":"カラー剤 N5","qty":2,"type":"fixed"},{"name":"サボニーズ","qty":1,"type":"fixed"},{"name":"シェービングソープ","qty":6,"type":"fixed"},{"name":"柔軟剤","qty":2,"type":"fixed"},{"name":"消臭スプレー","qty":2,"type":"fixed"},{"name":"洗濯洗剤","qty":2,"type":"fixed"},{"name":"トイレ洗剤","qty":1,"type":"fixed"},{"name":"トニック","qty":2,"type":"fixed"},{"name":"ノーマルWN1","qty":1,"type":"fixed"},{"name":"バイタリス","qty":2,"type":"fixed"},{"name":"パイプ系洗浄剤","qty":2,"type":"fixed"},{"name":"パウダー","qty":1,"type":"fixed"},{"name":"プレシェーブ","qty":4,"type":"fixed"},{"name":"ヘアクリーム","qty":1,"type":"fixed"},{"name":"ラップ","qty":2,"type":"fixed"},{"name":"リムーバー","qty":1,"type":"fixed"},{"name":"ワックス","qty":1,"type":"fixed"}],"createdAt":"2026-03-10T00:00:00.000Z"}];
+
+const INIT_STORES = [
+  {code:1,name:"久留米",area:"久留米"},
+  {code:2,name:"十三部",area:"久留米"},
+  {code:3,name:"津福",area:"久留米"},
+  {code:4,name:"小森野",area:"久留米"},
+  {code:5,name:"善導寺",area:"久留米"},
+  {code:6,name:"みやき",area:"佐賀"},
+  {code:7,name:"八女",area:"筑後"},
+  {code:8,name:"柳川",area:"筑後"},
+  {code:9,name:"柳川駅前",area:"筑後"},
+  {code:10,name:"築町",area:"筑後"},
+  {code:11,name:"新栄町",area:"筑後"},
+  {code:12,name:"四ツ山",area:"筑後"},
+  {code:101,name:"柳川美容",area:"筑後"},
+  {code:102,name:"八女美容",area:"筑後"},
+];
+
+// 注文票の固定商品（表面・裏面）
+const ORDER_FRONT = [
+  {name:"シャンプー",base:"1"},
+  {name:"リンス",base:"1"},
+  {name:"シェービングソープ",base:"5"},
+  {name:"プレシェーブ",base:"5"},
+  {name:"乳液",base:"5"},
+  {name:"トニック",base:"4"},
+  {name:"カラー剤 N2",base:"3ケース"},
+  {name:"カラー剤 N3",base:"3ケース"},
+  {name:"カラー剤 N4",base:"3ケース"},
+  {name:"カラー剤 N5",base:"3ケース"},
+  {name:"カラー剤 N6",base:"3ケース"},
+  {name:"白髪ぼかし",base:"4ケース"},
+  {name:"オキシ６％",base:"4"},
+  {name:"リムーバー",base:"2"},
+  {name:"ラップ",base:"4"},
+  {name:"サボニーズ",base:"3"},
+  {name:"打ち粉",base:"3"},
+  {name:"パウダー",base:"2"},
+  {name:"バイタリス",base:"3"},
+  {name:"ムース",base:"3"},
+  {name:"ワックス",base:"3"},
+  {name:"ジェル",base:"3"},
+  {name:"ヘアクリーム",base:"3"},
+  {name:"ヘアスプレー",base:"3"},
+  {name:"エタノール",base:""},
+];
+const ORDER_BACK = [
+  {name:"洗濯洗剤",base:"5"},
+  {name:"柔軟剤",base:"2"},
+  {name:"トイレ洗剤",base:"2"},
+  {name:"カビキラー",base:"1"},
+  {name:"食器洗剤",base:"2"},
+  {name:"パイプクリーナー",base:"2"},
+  {name:"消臭スプレー",base:"2"},
+  {name:"トイレットペーパー",base:"3袋"},
+  {name:"ノート",base:"2"},
+  {name:"ハンドペーパー",base:"2"},
+  {name:"エアダスター",base:"2"},
+];
+
+// ===================== STATE =====================
+function getS(){
+  return {
+    products: JSON.parse(localStorage.getItem('inv2_products') || 'null') || JSON.parse(JSON.stringify(INIT_PRODUCTS)),
+    stores:   JSON.parse(localStorage.getItem('inv2_stores')   || 'null') || JSON.parse(JSON.stringify(INIT_STORES)),
+    logs:     JSON.parse(localStorage.getItem('inv2_logs')     || '[]'),
+    orders:   (()=>{ const o=JSON.parse(localStorage.getItem('inv2_orders')||'null'); return (o&&o.length>0)?o:JSON.parse(JSON.stringify(INIT_ORDERS)); })(),
+  };
+}
+function saveS(s){
+  localStorage.setItem('inv2_products', JSON.stringify(s.products));
+  localStorage.setItem('inv2_stores',   JSON.stringify(s.stores));
+  localStorage.setItem('inv2_logs',     JSON.stringify(s.logs));
+  localStorage.setItem('inv2_orders',   JSON.stringify(s.orders));
+}
+
+// ===================== NAV =====================
+function nav(id, btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  btn.classList.add('active');
+  if(id==='dashboard') renderDashboard();
+  if(id==='stock') renderStock();
+  if(id==='log') renderLog();
+  if(id==='analysis') renderAnalysis();
+  if(id==='master') renderMaster();
+  if(id==='inbound'){ fillIbProduct(); document.getElementById('ib-date').value=today(); }
+  if(id==='order') oInit();
+}
+
+function today(){ return new Date().toISOString().slice(0,10); }
+function thisMonth(){
+  const n=new Date(); return n.getFullYear()+'-'+String(n.getMonth()+1).padStart(2,'0');
+}
+
+// ===================== DASHBOARD =====================
+function renderDashboard(){
+  const s = getS();
+  const now = new Date();
+  document.getElementById('dash-sub').textContent = now.toLocaleDateString('ja-JP',{year:'numeric',month:'long',day:'numeric',weekday:'short'}) + ' 時点';
+
+  const low = s.products.filter(p=>p.base>0&&p.stock<p.base).length;
+  const critical = s.products.filter(p=>p.base>0&&p.stock===0).length;
+  const totalOut = calcConsumption(s.orders, 1);
+  const totalProducts = Object.keys(totalOut).length;
+
+  document.getElementById('kpi-row').innerHTML = `
+    <div class="kpi"><div class="kpi-label">商品数</div><div class="kpi-value k-blue">${s.products.length}</div></div>
+    <div class="kpi"><div class="kpi-label">要発注アラート</div><div class="kpi-value k-warn">${low}</div></div>
+    <div class="kpi"><div class="kpi-label">在庫切れ</div><div class="kpi-value k-danger">${critical}</div></div>
+    <div class="kpi"><div class="kpi-label">今月注文品目数</div><div class="kpi-value k-ok">${totalProducts}</div></div>
+  `;
+
+  // Alerts
+  const alerts = s.products.filter(p=>p.base>0&&p.stock<p.base).sort((a,b)=>a.stock/a.base - b.stock/b.base).slice(0,7);
+  const al = document.getElementById('dash-alerts');
+  al.innerHTML = alerts.length===0
+    ? '<div style="color:var(--green);font-size:13px;">⚡ 残少商品はありません</div>'
+    : alerts.map(p=>{
+        const r=Math.round(p.stock/p.base*100);
+        const cls=r<20?'prog-low':'prog-warn';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid var(--border2);">
+          <div><div style="font-size:13px;font-weight:500;">${p.name}</div><div style="font-size:11px;color:var(--text3);">残 ${p.stock} / 基準 ${p.base}</div></div>
+          <div style="text-align:right;"><div style="font-size:12px;color:var(--yellow);margin-bottom:3px;">${r}%</div><div class="prog-bar"><div class="prog-fill ${cls}" style="width:${r}%"></div></div></div>
+        </div>`;
+      }).join('');
+
+  // Recent orders
+  const recent = [...s.orders].sort((a,b)=>b.id-a.id).slice(0,5);
+  const re = document.getElementById('dash-recent');
+  re.innerHTML = recent.length===0
+    ? '<div style="color:var(--text3);font-size:13px;">まだ注文票の入力がありません</div>'
+    : recent.map(o=>{
+        const [y,m]=o.month.split('-');
+        return `<div style="display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border2);font-size:13px;">
+          <span>${o.store}</span>
+          <span style="color:var(--text2);">${parseInt(m)}月　${o.items.length}品目</span>
+        </div>`;
+      }).join('');
+}
+
+// ===================== STOCK =====================
+function renderStock(){
+  const s = getS();
+  const q = document.getElementById('stock-q').value.trim().toLowerCase();
+  const f = document.getElementById('stock-f').value;
+  let prods = s.products.filter(p=>{
+    if(q && !p.name.toLowerCase().includes(q)) return false;
+    if(f==='low') return p.base>0&&p.stock<p.base;
+    if(f==='ok') return p.base===0||p.stock>=p.base;
+    return true;
+  });
+  const tbody = document.getElementById('stock-tbody');
+  tbody.innerHTML = prods.map(p=>{
+    const r = p.base>0?p.stock/p.base*100:100;
+    const cls = p.base>0&&p.stock<p.base?'badge-low':'badge-ok';
+    const label = p.base>0&&p.stock<p.base?'要発注':'正常';
+    const pcls = p.base>0&&p.stock<p.base?'prog-low':'prog-ok';
+    return `<tr><td>${p.name}</td><td class="mono">${p.base||'-'}</td><td class="mono" style="font-weight:700;">${p.stock}</td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td><div style="display:flex;align-items:center;gap:6px;"><div class="prog-bar"><div class="prog-fill ${pcls}" style="width:${Math.min(r,100)}%"></div></div><span style="font-size:11px;color:var(--text3);">${r.toFixed(0)}%</span></div></td>
+      <td style="color:var(--text3);font-size:12px;">${p.unit||'-'}</td></tr>`;
+  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>';
+}
+
+// ===================== INBOUND =====================
+function fillIbProduct(){
+  const s = getS();
+  document.getElementById('ib-product').innerHTML = s.products.map(p=>`<option>${p.name}</option>`).join('');
+}
+function recordInbound(){
+  const s = getS();
+  const date=document.getElementById('ib-date').value;
+  const product=document.getElementById('ib-product').value;
+  const qty=parseInt(document.getElementById('ib-qty').value);
+  const note=document.getElementById('ib-note').value;
+  const msg=document.getElementById('ib-msg');
+  if(!date||!product||isNaN(qty)||qty<=0){ msg.innerHTML='<div class="msg-err">日付・商品・数量を正しく入力してください</div>'; return; }
+  s.logs.push({date,store:'倉庫',product,type:'in',qty,note});
+  const i=s.products.findIndex(p=>p.name===product);
+  if(i>=0) s.products[i].stock+=qty;
+  saveS(s);
+  msg.innerHTML=`<div class="msg-ok">✓ ${product} を ${qty} 個入庫しました</div>`;
+  document.getElementById('ib-qty').value='';
+  document.getElementById('ib-note').value='';
+  setTimeout(()=>msg.innerHTML='',3000);
+}
+
+// ===================== LOG =====================
+function renderLog(){
+  const s = getS();
+  const storeSel=document.getElementById('log-store');
+  const cur=storeSel.value;
+  const allStores=[...new Set(s.logs.map(l=>l.store))].sort();
+  storeSel.innerHTML='<option value="all">全店舗</option>'+allStores.map(st=>`<option>${st}</option>`).join('');
+  if(cur) storeSel.value=cur;
+  const stF=storeSel.value, tyF=document.getElementById('log-type').value, q=document.getElementById('log-q').value.trim().toLowerCase();
+  const logs=[...s.logs].reverse().filter(l=>{
+    if(stF!=='all'&&l.store!==stF) return false;
+    if(tyF==='in'&&l.type!=='in') return false;
+    if(tyF==='out'&&l.type!=='out') return false;
+    if(q&&!l.product.toLowerCase().includes(q)) return false;
+    return true;
+  });
+  document.getElementById('log-tbody').innerHTML = logs.map(l=>`<tr>
+    <td class="mono" style="font-size:12px;color:var(--text3);">${l.date}</td>
+    <td>${l.store}</td><td>${l.product}</td>
+    <td><span class="badge ${l.type==='in'?'badge-in':'badge-out'}">${l.type==='in'?'入庫':'出庫'}</span></td>
+    <td class="mono" style="font-weight:700;">${l.qty}</td>
+    <td style="color:var(--text3);font-size:12px;">${l.note||'-'}</td>
+  </tr>`).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>';
+}
+
+// ===================== ORDER INPUT =====================
+let oStore=null, oFreeCount=0;
+
+function oInit(){
+  const now=new Date();
+  document.getElementById('o-month').value=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+  // Store grid
+  const s=getS();
+  const grid=document.getElementById('o-store-grid');
+  if(grid.children.length===0){
+    s.stores.forEach(st=>{
+      const btn=document.createElement('button');
+      btn.className='store-btn';
+      btn.innerHTML=`<div class="store-area">${st.area}</div>${st.name}`;
+      btn.onclick=()=>{
+        document.querySelectorAll('.store-btn').forEach(b=>b.classList.remove('selected'));
+        btn.classList.add('selected');
+        oStore=st;
+        document.getElementById('o-btn1').disabled=false;
+        document.getElementById('o-btn1').textContent=`${st.name} の注文を入力 →`;
+      };
+      grid.appendChild(btn);
+    });
+  }
+  oShowScreen(1);
+  setOStep(1);
+}
+
+function oShowScreen(n){
+  document.querySelectorAll('.order-screen').forEach((s,i)=>s.classList.toggle('active',i===n-1));
+}
+function setOStep(n){
+  for(let i=1;i<=3;i++){
+    const el=document.getElementById('ostep'+i);
+    el.classList.remove('active','done');
+    if(i<n) el.classList.add('done');
+    else if(i===n) el.classList.add('active');
+  }
+}
+
+function oToScreen1(){
+  oShowScreen(1); setOStep(1);
+}
+function oToScreen2(){
+  if(!oStore){ showToast('店舗を選択してください'); return; }
+  const month=document.getElementById('o-month').value;
+  if(!month){ showToast('月を選択してください'); return; }
+  const [y,m]=month.split('-');
+  document.getElementById('o-form-title').textContent=`${oStore.name}　${parseInt(m)}月`;
+  buildOForm();
+  oShowScreen(2); setOStep(2);
+}
+function oToScreen3(){
+  buildOConfirm();
+  oShowScreen(3); setOStep(3);
+}
+
+function buildOForm(){
+  const tbl=document.getElementById('o-table');
+  tbl.innerHTML='';
+  const makeSec=(label)=>{
+    const d=document.createElement('div');
+    d.className='order-sec-head'; d.textContent=label; tbl.appendChild(d);
+  };
+  const makeRow=(p)=>{
+    const d=document.createElement('div');
+    d.className='order-row';
+    d.innerHTML=`<div class="order-name">${p.name}</div><div class="order-base">${p.base?'/'+p.base:''}</div>
+      <input class="order-qty" type="number" min="0" placeholder="0" inputmode="numeric" data-name="${p.name}">`;
+    d.querySelector('input').addEventListener('input',function(){
+      this.classList.toggle('has-val',this.value>0);
+      d.classList.toggle('filled',this.value>0);
+      oUpdateCount();
+    });
+    tbl.appendChild(d);
+  };
+  makeSec('表面');
+  ORDER_FRONT.forEach(makeRow);
+  makeSec('裏面');
+  ORDER_BACK.forEach(makeRow);
+
+  document.getElementById('o-free-rows').innerHTML='';
+  oFreeCount=0;
+  oUpdateCount();
+}
+
+function oUpdateCount(){
+  let c=0;
+  document.querySelectorAll('.order-qty').forEach(i=>{ if(parseInt(i.value)>0) c++; });
+  document.querySelectorAll('.free-qty').forEach(i=>{ if(parseInt(i.value)>0) c++; });
+  document.getElementById('o-count').textContent=`${c}品目入力済み`;
+}
+
+function oAddFree(){
+  oFreeCount++;
+  const id='ofree-'+oFreeCount;
+  const d=document.createElement('div');
+  d.className='free-row'; d.id=id;
+  d.innerHTML=`<input class="free-input" type="text" placeholder="品名" data-free-name>
+    <input class="free-qty" type="number" min="0" placeholder="数量" inputmode="numeric" data-free-qty>
+    <button class="del-btn" onclick="document.getElementById('${id}').remove();oUpdateCount();">×</button>`;
+  d.querySelector('.free-qty').addEventListener('input',oUpdateCount);
+  document.getElementById('o-free-rows').appendChild(d);
+}
+
+function oCollect(){
+  const items=[];
+  document.querySelectorAll('.order-qty').forEach(inp=>{
+    const v=parseInt(inp.value);
+    if(!isNaN(v)&&v>0) items.push({name:inp.dataset.name,qty:v,type:'fixed'});
+  });
+  document.querySelectorAll('.free-row').forEach(row=>{
+    const name=row.querySelector('[data-free-name]').value.trim();
+    const qty=parseInt(row.querySelector('[data-free-qty]').value);
+    if(name&&!isNaN(qty)&&qty>0) items.push({name,qty,type:'free'});
+  });
+  return items;
+}
+
+function buildOConfirm(){
+  const items=oCollect();
+  const month=document.getElementById('o-month').value;
+  const [y,m]=month.split('-');
+  document.getElementById('o-confirm-title').textContent=`${oStore.name}　${parseInt(m)}月　— 確認`;
+
+  // Confirm body
+  const body=document.getElementById('o-confirm-body');
+  body.innerHTML = items.length===0
+    ? '<div style="padding:16px;text-align:center;color:var(--text3);">入力なし</div>'
+    : items.map(it=>`<div class="confirm-row">
+        <span>${it.name}${it.type==='free'?'<span class="free-tag">追加</span>':''}</span>
+        <span class="confirm-qty">${it.qty}</span>
+      </div>`).join('');
+
+  // Stock check
+  const s=getS();
+  const sc=document.getElementById('o-stock-check');
+  const checks=items.map(it=>{
+    const p=s.products.find(x=>x.name===it.name);
+    return p?{name:it.name,stock:p.stock,base:p.base,orderQty:it.qty}:null;
+  }).filter(Boolean);
+  sc.innerHTML = checks.map(c=>{
+    const after=c.stock-c.orderQty;
+    const cls=after<0?'style="color:var(--red);font-weight:700;"':after<c.base*0.3?'style="color:var(--yellow);"':'style="color:var(--text3);"';
+    return `<div class="confirm-row">
+      <span>${c.name}</span>
+      <span ${cls}>倉庫残: ${c.stock} → 出庫後: ${after}</span>
+    </div>`;
+  }).join('') || '<div style="padding:12px 16px;color:var(--text3);font-size:13px;">該当なし</div>';
+}
+
+function oSubmit(){
+  const items=oCollect();
+  if(items.length===0){ showToast('入力された数量がありません'); return; }
+  const month=document.getElementById('o-month').value;
+  const s=getS();
+  const dup=s.orders.findIndex(o=>o.store===oStore.name&&o.month===month);
+  if(dup>=0){
+    if(!confirm(`${oStore.name}の${month}はすでに入力済みです。上書きしますか？`)) return;
+    // 上書き前に在庫を戻す
+    s.orders[dup].items.forEach(it=>{
+      const pi=s.products.findIndex(p=>p.name===it.name);
+      if(pi>=0) s.products[pi].stock+=it.qty;
+    });
+    s.orders.splice(dup,1);
+  }
+  // 在庫から出庫
+  items.forEach(it=>{
+    const pi=s.products.findIndex(p=>p.name===it.name);
+    if(pi>=0) s.products[pi].stock=Math.max(0,s.products[pi].stock-it.qty);
+    // ログ追加
+    const [y,m]=month.split('-');
+    s.logs.push({date:`${y}-${m}-01`,store:oStore.name,product:it.name,type:'out',qty:it.qty,note:'注文票'});
+  });
+  const record={id:Date.now(),store:oStore.name,month,items,createdAt:new Date().toISOString()};
+  s.orders.unshift(record);
+  saveS(s);
+  const [y,m]=month.split('-');
+  document.getElementById('o-done-title').textContent=`${oStore.name}　${parseInt(m)}月　送信完了`;
+  document.getElementById('o-done-sub').textContent=`${items.length}品目を記録しました`;
+  oShowScreen(4);
+}
+
+function oReset(){
+  oStore=null;
+  document.querySelectorAll('.store-btn').forEach(b=>b.classList.remove('selected'));
+  document.getElementById('o-btn1').disabled=true;
+  document.getElementById('o-btn1').textContent='数量入力へ →';
+  oInit();
+}
+
+// ===================== ANALYSIS =====================
+let analysisPeriod=1;
+function setPeriod(n, btn){
+  analysisPeriod=n;
+  document.querySelectorAll('.analysis-period-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderAnalysis();
+}
+
+function calcConsumption(orders, months){
+  const now=new Date();
+  const map={};
+  orders.forEach(o=>{
+    const [y,m]=o.month.split('-');
+    const d=new Date(parseInt(y),parseInt(m)-1,1);
+    if(months===1){
+      if(d.getFullYear()!==now.getFullYear()||d.getMonth()!==now.getMonth()) return;
+    } else if(months>0){
+      // N months ago from latest data month (not from today)
+      const allMonths=orders.map(o=>o.month).sort();
+      const latest=allMonths[allMonths.length-1];
+      const [ly,lm]=latest.split('-');
+      const cutoff=new Date(parseInt(ly),parseInt(lm)-months,1);
+      if(d<cutoff) return;
+    }
+    o.items.forEach(it=>{
+      map[it.name]=(map[it.name]||0)+it.qty;
+    });
+  });
+  return map;
+}
+
+function renderAnalysis(){
+  const s=getS();
+  const labels=['今月','3ヶ月','半年','1年'];
+  const periodIdx=[1,3,6,12].indexOf(analysisPeriod);
+  document.getElementById('analysis-period-label').textContent=labels[periodIdx]+'の消費ランキング';
+
+  // ランキングは全期間で表示
+  const mapAll=calcConsumption(s.orders, 0);
+  const mapPeriod=calcConsumption(s.orders, analysisPeriod);
+  const sortedAll=Object.entries(mapAll).sort((a,b)=>b[1]-a[1]);
+  const top10=sortedAll.slice(0,10);
+  const q=document.getElementById('analysis-q').value.trim().toLowerCase();
+
+  // Rank
+  const rank=document.getElementById('analysis-rank');
+  rank.innerHTML = top10.length===0
+    ? '<div style="color:var(--text3);font-size:13px;padding:8px 0;">データなし</div>'
+    : top10.map(([name,qty],i)=>{
+        const max=top10[0][1];
+        const w=Math.round(qty/max*100);
+        return `<div style="margin-bottom:10px;">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:3px;">
+            <span>${i+1}. ${name}</span><span style="font-weight:700;font-family:'DM Mono';">${qty}</span>
+          </div>
+          <div style="background:var(--border);border-radius:4px;height:6px;"><div style="background:var(--text);height:100%;border-radius:4px;width:${w}%;"></div></div>
+        </div>`;
+      }).join('');
+
+  // Stock check
+  const sc=document.getElementById('analysis-stockcheck');
+  const concerns=s.products.filter(p=>p.base>0&&p.stock<p.base&&mapAll[p.name]).sort((a,b)=>a.stock/a.base-b.stock/b.base);
+  sc.innerHTML = concerns.length===0
+    ? '<div style="color:var(--green);font-size:13px;padding:8px 0;">⚡ 問題なし</div>'
+    : concerns.map(p=>{
+        const consumption=mapAll[p.name]||0;
+        return `<div style="padding:7px 0;border-bottom:1px solid var(--border2);">
+          <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:2px;">
+            <span style="font-weight:500;">${p.name}</span>
+            <span class="badge badge-warn">残 ${p.stock}</span>
+          </div>
+          <div style="font-size:11px;color:var(--text3);">消費数: ${consumption}　最低在庫数: ${p.base}</div>
+        </div>`;
+      }).join('');
+
+  // Summary table - 期間ボタンで絞り込む
+  const allOrderMonths=[...new Set(s.orders.map(o=>o.month))].sort();
+  let showMonths;
+  if(analysisPeriod===1){
+    const now=new Date();
+    const cur=now.getFullYear()+'-'+String(now.getMonth()+1).padStart(2,'0');
+    showMonths=allOrderMonths.filter(m=>m===cur).reverse();
+  } else {
+    const latest=allOrderMonths[allOrderMonths.length-1];
+    const [ly,lm]=latest.split('-');
+    const cutoff=new Date(parseInt(ly),parseInt(lm)-analysisPeriod,1);
+    showMonths=allOrderMonths.filter(m=>{
+      const [y,mo]=m.split('-');
+      return new Date(parseInt(y),parseInt(mo)-1,1)>=cutoff;
+    }).reverse();
+  }
+
+  const allNames=[...new Set(s.orders.flatMap(o=>o.items.map(it=>it.name)))].filter(n=>!q||n.toLowerCase().includes(q)).sort();
+
+  const monthMap={};
+  s.orders.forEach(o=>{
+    if(!monthMap[o.month]) monthMap[o.month]={};
+    o.items.forEach(it=>{
+      monthMap[o.month][it.name]=(monthMap[o.month][it.name]||0)+it.qty;
+    });
+  });
+
+  const thead=document.getElementById('analysis-thead');
+  const tbody=document.getElementById('analysis-tbody');
+  thead.innerHTML=`<tr><th>商品名</th>${showMonths.map(m=>{const[y,mo]=m.split('-');return`<th>${parseInt(mo)}月</th>`}).join('')}<th>合計</th></tr>`;
+  tbody.innerHTML = allNames.map(name=>{
+    const total=showMonths.reduce((a,m)=>a+(monthMap[m]?.[name]||0),0);
+    if(total===0) return '';
+    return `<tr><td>${name}</td>${showMonths.map(m=>`<td class="mono" style="text-align:center;">${monthMap[m]?.[name]||'-'}</td>`).join('')}<td class="mono" style="text-align:center;font-weight:700;">${total}</td></tr>`;
+  }).filter(Boolean).join('') || `<tr><td colspan="${showMonths.length+2}" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>`;
+}
+
+// ===================== MASTER =====================
+function renderMaster(){
+  const s=getS();
+  const inputStyle='width:70px;border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:13px;font-family:inherit;text-align:center;outline:none;';
+  document.getElementById('pm-tbody').innerHTML=s.products.map((p,i)=>`<tr>
+    <td>${p.name}</td>
+    <td><input type="number" min="0" value="${p.base||0}" style="${inputStyle}"
+      onchange="updateBase(${i},this.value)"
+      onfocus="this.style.borderColor='var(--text)'"
+      onblur="this.style.borderColor='var(--border)'"></td>
+    <td><input type="number" min="0" value="${p.stock}" style="${inputStyle}"
+      onchange="updateStock(${i},this.value)"
+      onfocus="this.style.borderColor='var(--text)'"
+      onblur="this.style.borderColor='var(--border)'"></td>
+    <td style="font-size:12px;color:var(--text3);">${p.unit||'-'}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delProduct(${i})">削除</button></td>
+  </tr>`).join('');
+  document.getElementById('sm-tbody').innerHTML=s.stores.map((st,i)=>`<tr>
+    <td class="mono">${st.code}</td><td>${st.name}</td><td>${st.area}</td>
+    <td><button class="btn btn-danger btn-sm" onclick="delStore(${i})">削除</button></td>
+  </tr>`).join('');
+}
+function addProduct(){
+  const s=getS();
+  const name=document.getElementById('pm-name').value.trim();
+  const base=parseInt(document.getElementById('pm-base').value)||0;
+  const stock=parseInt(document.getElementById('pm-stock').value)||0;
+  const unit=document.getElementById('pm-unit').value.trim();
+  const msg=document.getElementById('pm-msg');
+  if(!name){ msg.innerHTML='<div class="msg-err">商品名を入力してください</div>'; return; }
+  if(s.products.find(p=>p.name===name)){ msg.innerHTML='<div class="msg-err">同名の商品が存在します</div>'; return; }
+  s.products.push({name,base,stock,unit});
+  saveS(s);
+  renderMaster();
+  ['pm-name','pm-base','pm-stock','pm-unit'].forEach(id=>document.getElementById(id).value='');
+  msg.innerHTML='<div class="msg-ok">✓ 追加しました</div>';
+  setTimeout(()=>msg.innerHTML='',2500);
+}
+function updateBase(i, val){
+  const s=getS();
+  const n=parseInt(val);
+  if(isNaN(n)||n<0){ showToast('正しい数値を入力してください'); renderMaster(); return; }
+  const name=s.products[i].name;
+  s.products[i].base=n;
+  saveS(s);
+  showToast(`${name} の最低在庫数を ${n} に更新しました`);
+}
+function updateStock(i, val){
+  const s=getS();
+  const n=parseInt(val);
+  if(isNaN(n)||n<0){ showToast('正しい数値を入力してください'); renderMaster(); return; }
+  const name=s.products[i].name;
+  s.products[i].stock=n;
+  saveS(s);
+  showToast(`${name} の残数を ${n} に更新しました`);
+}
+function delProduct(i){
+  if(!confirm('削除しますか？')) return;
+  const s=getS(); s.products.splice(i,1); saveS(s); renderMaster();
+}
+function addStore(){
+  const s=getS();
+  const name=document.getElementById('sm-name').value.trim();
+  const area=document.getElementById('sm-area').value.trim();
+  const msg=document.getElementById('sm-msg');
+  if(!name){ msg.innerHTML='<div class="msg-err">店舗名を入力してください</div>'; return; }
+  const maxCode=s.stores.reduce((a,b)=>Math.max(a,b.code),0);
+  s.stores.push({code:maxCode+1,name,area});
+  saveS(s);
+  renderMaster();
+  ['sm-name','sm-area'].forEach(id=>document.getElementById(id).value='');
+  msg.innerHTML='<div class="msg-ok">✓ 追加しました</div>';
+  setTimeout(()=>msg.innerHTML='',2500);
+}
+function delStore(i){
+  if(!confirm('削除しますか？')) return;
+  const s=getS(); s.stores.splice(i,1); saveS(s); renderMaster();
+}
+
+// ===================== GOOGLE SHEETS SYNC =====================
+const GAS_URL = 'https://script.google.com/macros/s/AKfycbxVKxQzxjI5_TOP3IvTjXh1IhLAXhWTzLhYIwNYwpmOAOyEWzOx9T1JisfCfFuulUkQjw/exec';
+
+async function gasGet(key){
+  try {
+    const res = await fetch(`${GAS_URL}?action=get&key=${key}`);
+    const json = await res.json();
+    return json.ok && json.data ? json.data : null;
+  } catch(e){ return null; }
+}
+
+async function gasSet(key, value){
+  try {
+    const res = await fetch(`${GAS_URL}?action=set&key=${key}&value=${encodeURIComponent(value)}`);
+    const json = await res.json();
+    return json.ok;
+  } catch(e){ return false; }
+}
+
+async function syncToCloud(){
+  const s = getS();
+  showToast('クラウドに保存中...');
+  await gasSet('inv2_products', JSON.stringify(s.products));
+  await gasSet('inv2_stores',   JSON.stringify(s.stores));
+  await gasSet('inv2_logs',     JSON.stringify(s.logs));
+  await gasSet('inv2_orders',   JSON.stringify(s.orders));
+  showToast('✓ クラウドに保存しました');
+}
+
+async function syncFromCloud(){
+  showToast('クラウドからデータを読み込み中...');
+  const keys = ['inv2_products','inv2_stores','inv2_logs','inv2_orders'];
+  let changed = false;
+  for(const key of keys){
+    const val = await gasGet(key);
+    if(val){
+      localStorage.setItem(key, val);
+      changed = true;
+    }
+  }
+  if(changed){
+    showToast('✓ データを同期しました');
+    renderDashboard();
+  } else {
+    showToast('クラウドにデータがありません');
+  }
+}
+
+// saveS後に自動でクラウド同期
+const _origSaveS = saveS;
+function saveS(s){
+  _origSaveS(s);
+  syncToCloud();
+}
+
+// ===================== TOAST =====================
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2200);
+}
+
+// ===================== INIT =====================
+// localStorageのordersが空なら初期データで上書き
+(()=>{
+  const stored = localStorage.getItem('inv2_orders');
+  if(!stored || stored==='[]' || stored==='null') {
+    localStorage.setItem('inv2_orders', JSON.stringify(INIT_ORDERS));
+  }
+})();
+renderDashboard();
+</script>
+
+</body>
+</html>
