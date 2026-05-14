@@ -1826,13 +1826,14 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxVKxQzxjI5_TOP3IvTjXh1
 
 async function gasGet(key){
   try {
-    const res = await fetch(`${GAS_URL}?action=get&key=${key}`);
+    const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}
+`);
     const json = await res.json();
     return json.ok && json.data ? json.data : null;
   } catch(e){ return null; }
 }
 
-async async function gasSet(key, value){
+async function gasSet(key, value){
   try {
     const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}`, {
       method: 'POST',
