@@ -1834,7 +1834,11 @@ async function gasGet(key){
 
 async function gasSet(key, value){
   try {
-    const res = await fetch(`${GAS_URL}?action=set&key=${key}&value=${encodeURIComponent(value)}`);
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({key, value})
+    });
     const json = await res.json();
     return json.ok;
   } catch(e){ return false; }
