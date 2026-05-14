@@ -8,7 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg: #eeeee8;
+  --bg: #f0f0ec;
   --white: #ffffff;
   --border: #e0e0e0;
   --border2: #f0f0f0;
@@ -27,7 +27,7 @@
   --red-border: #ef9a9a;
   --blue: #1565c0;
   --blue-bg: #e3f2fd;
-  --radius: 10px;
+  --radius: 14px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -89,7 +89,7 @@ border: 1px solid var(–border);
 border-radius: var(–radius);
 padding: 18px 20px;
 margin-bottom: 16px;
-box-shadow: 0 2px 8px rgba(0,0,0,.06);
+box-shadow: 0 2px 12px rgba(0,0,0,.09);
 }
 .card[style*=“padding:0”], .card[style*=“padding: 0”] {
 box-shadow: 0 2px 8px rgba(0,0,0,.06);
@@ -1037,10 +1037,10 @@ function renderDashboard(){
   const totalProducts = Object.keys(totalOut).length;
 
   document.getElementById('kpi-row').innerHTML = `
-    <div class="kpi" style="box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:12px;"><div class="kpi-label">商品数</div><div class="kpi-value k-blue">${s.products.length}</div></div>
-    <div class="kpi" style="box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:12px;"><div class="kpi-label">要発注アラート</div><div class="kpi-value k-warn">${low}</div></div>
-    <div class="kpi" style="box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:12px;"><div class="kpi-label">在庫切れ</div><div class="kpi-value k-danger">${critical}</div></div>
-    <div class="kpi" style="box-shadow:0 2px 8px rgba(0,0,0,.08);border-radius:12px;"><div class="kpi-label">今月注文品目数</div><div class="kpi-value k-ok">${totalProducts}</div></div>
+    <div class="kpi" style="box-shadow:0 2px 12px rgba(0,0,0,.09);border-radius:14px;"><div class="kpi-label">商品数</div><div class="kpi-value k-blue">${s.products.length}</div></div>
+    <div class="kpi" style="box-shadow:0 2px 12px rgba(0,0,0,.09);border-radius:14px;"><div class="kpi-label">要発注アラート</div><div class="kpi-value k-warn">${low}</div></div>
+    <div class="kpi" style="box-shadow:0 2px 12px rgba(0,0,0,.09);border-radius:14px;"><div class="kpi-label">在庫切れ</div><div class="kpi-value k-danger">${critical}</div></div>
+    <div class="kpi" style="box-shadow:0 2px 12px rgba(0,0,0,.09);border-radius:14px;"><div class="kpi-label">今月注文品目数</div><div class="kpi-value k-ok">${totalProducts}</div></div>
   `;
 
   // Alerts
