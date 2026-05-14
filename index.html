@@ -245,12 +245,66 @@ display: flex; justify-content: space-between; align-items: center;
 .summary-tbl td:first-child { white-space: normal; }
 
 @media (max-width: 900px) {
-.sidebar { width: 56px; }
-.sidebar-logo p, .nav-item span, .nav-section { display: none; }
-.sidebar-logo h1 { font-size: 18px; }
+.sidebar { display: none; }
+.main { padding-bottom: 64px; }
 .page { padding: 20px 16px; }
 .kpi-row { grid-template-columns: 1fr 1fr; }
 .store-grid { grid-template-columns: repeat(3,1fr); }
+}
+
+/* ===== BOTTOM TAB BAR ===== */
+.tab-bar-bottom {
+display: none;
+position: fixed; bottom: 0; left: 0; right: 0;
+background: var(–white);
+border-top: 1px solid var(–border);
+z-index: 100;
+padding-bottom: env(safe-area-inset-bottom);
+}
+.tab-bar-bottom .tab-items {
+display: flex; justify-content: space-around;
+padding: 6px 0 4px;
+}
+.tab-item {
+display: flex; flex-direction: column; align-items: center; gap: 2px;
+padding: 6px 12px; border: none; background: none;
+font-family: inherit; cursor: pointer;
+color: var(–text3); font-size: 10px; font-weight: 500;
+min-width: 56px; border-radius: 8px;
+transition: color .12s;
+}
+.tab-item svg { width: 22px; height: 22px; }
+.tab-item.active { color: var(–text); }
+.tab-item.active svg { stroke-width: 2.5; }
+
+/* メニューモーダル */
+.menu-modal {
+display: none; position: fixed; inset: 0;
+background: rgba(0,0,0,.4); z-index: 150;
+align-items: flex-end;
+}
+.menu-modal.open { display: flex; }
+.menu-sheet {
+background: var(–white); width: 100%;
+border-radius: 16px 16px 0 0;
+padding: 16px 0 32px;
+}
+.menu-sheet-title {
+font-size: 13px; font-weight: 700; color: var(–text3);
+padding: 0 20px 12px; letter-spacing: .06em;
+}
+.menu-sheet-item {
+display: flex; align-items: center; gap: 14px;
+padding: 14px 20px; border: none; background: none;
+font-family: inherit; font-size: 15px; font-weight: 500;
+color: var(–text); cursor: pointer; width: 100%;
+border-top: 1px solid var(–border2);
+}
+.menu-sheet-item svg { width: 20px; height: 20px; color: var(–text2); }
+
+@media (max-width: 900px) {
+.tab-bar-bottom { display: block; }
+.toast { bottom: 80px; }
 }
 </style>
 
@@ -275,6 +329,10 @@ display: flex; justify-content: space-between; align-items: center;
     <button class="nav-item" onclick="nav('stock',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
       <span>在庫一覧</span>
+    </button>
+    <button class="nav-item" onclick="nav('order-list',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 12l2 2 4-4"/></svg>
+      <span>発注リスト</span>
     </button>
     <button class="nav-item" onclick="nav('inbound',this)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
@@ -336,16 +394,11 @@ display: flex; justify-content: space-between; align-items: center;
   <div class="page-title">在庫一覧</div>
   <div class="page-sub">倉庫の現在在庫</div>
   <div class="filter-bar">
-    <input type="text" id="stock-q" placeholder="商品名で検索…" oninput="renderStock()" style="width:180px;">
-    <select id="stock-f" onchange="renderStock()">
-      <option value="all">すべて</option>
-      <option value="low">要発注のみ</option>
-      <option value="ok">正常のみ</option>
-    </select>
+    <input type="text" id="stock-q" placeholder="商品名で検索…" oninput="renderStock()" style="width:200px;">
   </div>
   <div class="card" style="padding:0;">
     <div class="tbl-wrap"><table>
-      <thead><tr><th>商品名</th><th>最低在庫数</th><th>現在残数</th><th>状態</th><th>充足率</th><th>単位</th></tr></thead>
+      <thead id="stock-thead"></thead>
       <tbody id="stock-tbody"></tbody>
     </table></div>
   </div>
@@ -469,8 +522,22 @@ display: flex; justify-content: space-between; align-items: center;
   </div>
 </div>
 
-<!-- ====== ANALYSIS ====== -->
+<!-- ====== ORDER LIST ====== -->
 
+<div class="page" id="page-order-list">
+  <div class="page-title">発注リスト</div>
+  <div class="page-sub">在庫一覧でチェックした商品</div>
+  <div class="card" style="padding:0;">
+    <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;">
+      <span style="font-size:13px;font-weight:700;" id="orderlist-count">0件</span>
+      <button class="btn btn-danger" style="font-size:11px;padding:5px 12px;" onclick="clearOrderList()">全て削除</button>
+    </div>
+    <div class="tbl-wrap"><table>
+      <thead><tr><th></th><th>商品名</th><th>現在残数</th><th>最低在庫数</th></tr></thead>
+      <tbody id="orderlist-tbody"></tbody>
+    </table></div>
+  </div>
+</div>
 <div class="page" id="page-analysis">
   <div class="page-title">消費分析</div>
   <div class="page-sub">注文票データから集計した消費数</div>
@@ -567,8 +634,66 @@ display: flex; justify-content: space-between; align-items: center;
   </div>
 </div>
 
-</div><!-- /main -->
 </div><!-- /app -->
+
+<!-- ===== BOTTOM TAB BAR ===== -->
+
+<div class="tab-bar-bottom">
+  <div class="tab-items">
+    <button class="tab-item active" id="tab-dashboard" onclick="navTab('dashboard',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+      ホーム
+    </button>
+    <button class="tab-item" id="tab-stock" onclick="navTab('stock',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 7H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+      在庫
+    </button>
+    <button class="tab-item" id="tab-order" onclick="navTab('order',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+      入力
+    </button>
+    <button class="tab-item" id="tab-analysis" onclick="navTab('analysis',this)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+      分析
+    </button>
+    <button class="tab-item" id="tab-more" onclick="openMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      その他
+    </button>
+  </div>
+</div>
+
+<!-- ===== MENU MODAL ===== -->
+
+<div class="menu-modal" id="menu-modal" onclick="closeMenu()">
+  <div class="menu-sheet" onclick="event.stopPropagation()">
+    <div class="menu-sheet-title">その他</div>
+    <button class="menu-sheet-item" onclick="navTab('order-list',null);closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/><path d="M9 12l2 2 4-4"/></svg>
+      発注リスト
+    </button>
+    <button class="menu-sheet-item" onclick="navTab('inbound',null);closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 4v16m8-8H4"/></svg>
+      入庫記録
+    </button>
+    <button class="menu-sheet-item" onclick="navTab('log',null);closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+      入出庫ログ
+    </button>
+    <button class="menu-sheet-item" onclick="navTab('master',null);closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M20 21a8 8 0 10-16 0"/></svg>
+      マスタ設定
+    </button>
+    <button class="menu-sheet-item" onclick="syncToCloud();closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+      クラウドに保存
+    </button>
+    <button class="menu-sheet-item" onclick="syncFromCloud();closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg>
+      クラウドから読み込み
+    </button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -843,6 +968,26 @@ function saveS(s){
   setTimeout(()=>{ if(typeof syncToCloud==='function') syncToCloud(); }, 0);
 }
 
+function navTab(id, tabBtn){
+  // サイドバーのnav流用
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+id).classList.add('active');
+  if(tabBtn) tabBtn.classList.add('active');
+  if(id==='dashboard') renderDashboard();
+  if(id==='stock') renderStock();
+  if(id==='log') renderLog();
+  if(id==='analysis'){ initAnalysis(); renderAnalysis(); }
+  if(id==='master') renderMaster();
+  if(id==='order-list') renderOrderList();
+  if(id==='order') oInit();
+  if(id==='inbound'){ fillIbProduct(); document.getElementById('ib-date').value=today(); }
+}
+
+function openMenu(){ document.getElementById('menu-modal').classList.add('open'); }
+function closeMenu(){ document.getElementById('menu-modal').classList.remove('open'); }
+
 // ===================== NAV =====================
 function nav(id, btn){
   document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
@@ -854,8 +999,9 @@ function nav(id, btn){
   if(id==='log') renderLog();
   if(id==='analysis'){ initAnalysis(); renderAnalysis(); }
   if(id==='master') renderMaster();
-  if(id==='inbound'){ fillIbProduct(); document.getElementById('ib-date').value=today(); }
+  if(id==='order-list') renderOrderList();
   if(id==='order') oInit();
+  if(id==='inbound'){ fillIbProduct(); document.getElementById('ib-date').value=today(); }
 }
 
 function today(){ return new Date().toISOString().slice(0,10); }
@@ -917,27 +1063,66 @@ function renderDashboard(){
 }
 
 // ===================== STOCK =====================
+let stockSort = 'default';
+
+function setStockSort(type){
+  if(stockSort===type) stockSort='default';
+  else stockSort=type;
+  renderStock();
+}
+
 function renderStock(){
   const s = getS();
   const q = document.getElementById('stock-q').value.trim().toLowerCase();
-  const f = document.getElementById('stock-f').value;
   let prods = s.products.filter(p=>{
     if(q && !p.name.toLowerCase().includes(q)) return false;
-    if(f==='low') return p.base>0&&p.stock<p.base;
-    if(f==='ok') return p.base===0||p.stock>=p.base;
     return true;
   });
+
+  // ソート
+  if(stockSort==='stock'){
+    prods = [...prods].sort((a,b)=>a.stock-b.stock);
+  } else if(stockSort==='status'){
+    prods = [...prods].sort((a,b)=>{
+      const ra = a.base>0?a.stock/a.base*100:100;
+      const rb = b.base>0?b.stock/b.base*100:100;
+      return ra-rb;
+    });
+  }
+
+  const thStyle='padding:9px 10px;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;white-space:nowrap;cursor:pointer;user-select:none;';
+  const thActive='background:#e8e8e8;border-radius:6px;';
+  const stockActive = stockSort==='stock'?thActive:'';
+  const statusActive = stockSort==='status'?thActive:'';
+  const stockArrow = stockSort==='stock'?' ↑':'↕';
+  const statusArrow = stockSort==='status'?' ↑':'↕';
+
+  document.getElementById('stock-thead').innerHTML=`<tr style="background:var(--bg);">
+    <th style="padding:9px 10px;"></th>
+    <th style="${thStyle}color:var(--text3);">商品名</th>
+    <th style="${thStyle}${stockActive}color:${stockSort==='stock'?'var(--text)':'var(--text3)'};" onclick="setStockSort('stock')">在庫数 ${stockArrow}</th>
+    <th style="${thStyle}${statusActive}color:${stockSort==='status'?'var(--text)':'var(--text3)'};" onclick="setStockSort('status')">状態 ${statusArrow}</th>
+    <th style="${thStyle}color:var(--text3);">最低在庫数</th>
+  </tr>`;
+
   const tbody = document.getElementById('stock-tbody');
+  const orderList = JSON.parse(localStorage.getItem('inv2_orderlist')||'[]');
   tbody.innerHTML = prods.map(p=>{
     const r = p.base>0?p.stock/p.base*100:100;
-    const cls = p.base>0&&p.stock<p.base?'badge-low':'badge-ok';
-    const label = p.base>0&&p.stock<p.base?'要発注':'正常';
-    const pcls = p.base>0&&p.stock<p.base?'prog-low':'prog-ok';
-    return `<tr><td>${p.name}</td><td class="mono">${p.base||'-'}</td><td class="mono" style="font-weight:700;">${p.stock}</td>
-      <td><span class="badge ${cls}">${label}</span></td>
-      <td><div style="display:flex;align-items:center;gap:6px;"><div class="prog-bar"><div class="prog-fill ${pcls}" style="width:${Math.min(r,100)}%"></div></div><span style="font-size:11px;color:var(--text3);">${r.toFixed(0)}%</span></div></td>
-      <td style="color:var(--text3);font-size:12px;">${p.unit||'-'}</td></tr>`;
-  }).join('') || '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>';
+    let badge;
+    if(p.base===0){ badge=''; }
+    else if(r<=10){ badge='<span style="font-size:18px;">❌</span>'; }
+    else if(r<=30){ badge='<span style="font-size:18px;">▲</span>'; }
+    else { badge='<span style="font-size:18px;">✅</span>'; }
+    const checked = orderList.includes(p.name) ? 'checked' : '';
+    return `<tr>
+      <td><input type="checkbox" ${checked} onchange="toggleOrderList('${p.name.replace(/'/g,"\\'")}',this.checked)" style="width:18px;height:18px;cursor:pointer;"></td>
+      <td>${p.name}</td>
+      <td class="mono" style="font-weight:700;text-align:center;">${p.stock}</td>
+      <td style="text-align:center;">${badge}</td>
+      <td class="mono" style="text-align:center;color:var(--text3);">${p.base||'-'}</td>
+    </tr>`;
+  }).join('') || '<tr><td colspan="5" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>';
 }
 
 // ===================== INBOUND =====================
@@ -1437,6 +1622,41 @@ function renderAnalysis(){
     }).join('');
   }
   tbody.innerHTML = rows || `<tr><td colspan="${showMonths.length===1?2:showMonths.length+2}" style="text-align:center;color:var(--text3);padding:20px;">データなし</td></tr>`;
+}
+
+// ===================== ORDER LIST =====================
+function toggleOrderList(name, checked){
+  let list = JSON.parse(localStorage.getItem('inv2_orderlist')||'[]');
+  if(checked){ if(!list.includes(name)) list.push(name); }
+  else { list = list.filter(n=>n!==name); }
+  localStorage.setItem('inv2_orderlist', JSON.stringify(list));
+  showToast(checked ? `${name} を発注リストに追加` : `${name} を発注リストから削除`);
+}
+
+function renderOrderList(){
+  const list = JSON.parse(localStorage.getItem('inv2_orderlist')||'[]');
+  const s = getS();
+  document.getElementById('orderlist-count').textContent = `${list.length}件`;
+  const tbody = document.getElementById('orderlist-tbody');
+  if(list.length===0){
+    tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">発注リストは空です<br><span style="font-size:12px;">在庫一覧でチェックを入れると追加されます</span></td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(name=>{
+    const p = s.products.find(x=>x.name===name);
+    return `<tr>
+      <td><input type="checkbox" checked onchange="toggleOrderList('${name.replace(/'/g,"\\'")}',this.checked);renderOrderList();renderStock();" style="width:18px;height:18px;cursor:pointer;"></td>
+      <td>${name}</td>
+      <td class="mono" style="text-align:center;font-weight:700;">${p?p.stock:'-'}</td>
+      <td class="mono" style="text-align:center;color:var(--text3);">${p?p.base||'-':'-'}</td>
+    </tr>`;
+  }).join('');
+}
+
+function clearOrderList(){
+  localStorage.setItem('inv2_orderlist','[]');
+  renderOrderList();
+  showToast('発注リストをクリアしました');
 }
 
 // ===================== MASTER =====================
