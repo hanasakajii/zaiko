@@ -1489,6 +1489,18 @@ function initAnalysis(){
   // 月ボタン
   const mContainer = document.getElementById('analysis-month-btns');
   mContainer.innerHTML = '';
+  // 全期間ボタン
+  const allMonthBtn = document.createElement('button');
+  allMonthBtn.className = 'analysis-period-btn' + (selectedMonths.size===0?' active':'');
+  allMonthBtn.textContent = '全期間';
+  allMonthBtn.onclick = ()=>{
+    selectedMonths.clear();
+    mContainer.querySelectorAll('button').forEach(b=>b.classList.remove('active'));
+    allMonthBtn.classList.add('active');
+    renderAnalysis();
+  };
+  mContainer.appendChild(allMonthBtn);
+
   allMonths.forEach(m=>{
     const [y,mo] = m.split('-');
     const btn = document.createElement('button');
@@ -1499,6 +1511,7 @@ function initAnalysis(){
       if(selectedMonths.has(m)) selectedMonths.delete(m);
       else selectedMonths.add(m);
       btn.classList.toggle('active', selectedMonths.has(m));
+      allMonthBtn.classList.toggle('active', selectedMonths.size===0);
       renderAnalysis();
     };
     mContainer.appendChild(btn);
