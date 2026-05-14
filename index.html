@@ -1835,14 +1835,13 @@ async function gasGet(key){
 
 async function gasSet(key, value){
   try {
-    const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}`, {
-      method: 'POST',
-      body: value
-    });
+    const url = `${GAS_URL}?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`;
+    const res = await fetch(url);
     const json = await res.json();
-        return json.ok;
+    return json.ok;
   } catch(e){ return false; }
 }
+
 
 async function syncToCloud(){
 
