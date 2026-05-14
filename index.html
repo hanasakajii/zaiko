@@ -1846,10 +1846,10 @@ async function syncToCloud(){
   const s = getS();
   showToast('クラウドに保存中...');
   const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
-  const pChunks = chunk(s.products, 30);
+  const pChunks = chunk(s.products, 20);
   for(let i=0;i<pChunks.length;i++) await gasSet('inv2_products_'+i, JSON.stringify(pChunks[i]));
   await gasSet('inv2_products_count', String(pChunks.length));
-  const oChunks = chunk(s.orders, 10);
+  const oChunks = chunk(s.orders, 5);
   for(let i=0;i<oChunks.length;i++) await gasSet('inv2_orders_'+i, JSON.stringify(oChunks[i]));
   await gasSet('inv2_orders_count', String(oChunks.length));
   await gasSet('inv2_stores', JSON.stringify(s.stores));
