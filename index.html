@@ -1826,12 +1826,12 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbxVKxQzxjI5_TOP3IvTjXh1
 
 async function gasGet(key){
   try {
-    const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}
-`);
+    const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}`);
     const json = await res.json();
     return json.ok && json.data ? json.data : null;
   } catch(e){ return null; }
 }
+
 
 async function gasSet(key, value){
   try {
@@ -1840,14 +1840,12 @@ async function gasSet(key, value){
       body: value
     });
     const json = await res.json();
-    return json.ok;
+        return json.ok;
   } catch(e){ return false; }
 }
 
-}
-
-
 async function syncToCloud(){
+
   const s = getS();
   showToast('クラウドに保存中...');
   const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
