@@ -542,9 +542,12 @@ border-top: 1px solid var(–border2);
       <button class="btn btn-danger" style="font-size:11px;padding:5px 12px;" onclick="clearOrderList()">全て削除</button>
     </div>
     <div class="tbl-wrap"><table>
-      <thead><tr><th></th><th>商品名</th><th>現在残数</th><th>最低在庫数</th></tr></thead>
+      <thead><tr><th></th><th>商品名</th><th>残数</th><th>発注数</th></tr></thead>
       <tbody id="orderlist-tbody"></tbody>
     </table></div>
+    <div id="orderlist-complete-btn" style="display:none;padding:16px;">
+      <button onclick="completeAllOrders()" style="width:100%;background:#2e7d32;color:#fff;border:none;border-radius:10px;padding:14px;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;">✓ まとめて入庫完了</button>
+    </div>
   </div>
 </div>
 <div class="page" id="page-analysis">
@@ -1668,17 +1671,44 @@ function renderOrderList(){
   const tbody = document.getElementById('orderlist-tbody');
   if(list.length===0){
     tbody.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--text3);padding:24px;">発注リストは空です<br><span style="font-size:12px;">在庫一覧でチェックを入れると追加されます</span></td></tr>';
+    document.getElementById('orderlist-complete-btn').style.display='none';
     return;
   }
   tbody.innerHTML = list.map(name=>{
     const p = s.products.find(x=>x.name===name);
+    const safeName = name.replace(/'/g,"\\'").replace(/\s/g,'_');
     return `<tr>
       <td><input type="checkbox" checked onchange="toggleOrderList('${name.replace(/'/g,"\\'")}',this.checked);renderOrderList();renderStock();" style="width:18px;height:18px;cursor:pointer;"></td>
       <td>${name}</td>
       <td class="mono" style="text-align:center;font-weight:700;">${p?p.stock:'-'}</td>
-      <td class="mono" style="text-align:center;color:var(--text3);">${p?p.base||'-':'-'}</td>
+      <td><input type="number" min="0" placeholder="0" inputmode="numeric" id="oqty-${safeName}" style="width:60px;border:1px solid var(--border);border-radius:6px;padding:5px 6px;font-size:13px;font-family:inherit;text-align:center;outline:none;"></td>
     </tr>`;
   }).join('');
+  document.getElementById('orderlist-complete-btn').style.display='block';
+}
+
+function completeAllOrders(){
+  const list = JSON.parse(localStorage.getItem('inv2_orderlist')||'[]');
+  const s = getS();
+  let completed = [];
+  let skipped = [];
+  list.forEach(name=>{
+    const safeName = name.replace(/'/g,"\\'").replace(/\s/g,'_');
+    const input = document.getElementById('oqty-'+safeName);
+    const qty = parseInt(input?.value);
+    if(isNaN(qty)||qty<=0){ skipped.push(name); return; }
+    const i = s.products.findIndex(p=>p.name===name);
+    if(i>=0) s.products[i].stock += qty;
+    s.logs.push({date:new Date().toISOString().slice(0,10),store:'倉庫',product:name,type:'in',qty,note:'発注入庫'});
+    completed.push(name);
+  });
+  // 完了した商品を発注リストから削除
+  const remaining = list.filter(n=>!completed.includes(n));
+  localStorage.setItem('inv2_orderlist', JSON.stringify(remaining));
+  saveS(s);
+  setTimeout(()=>renderOrderList(), 0);
+  if(completed.length>0) showToast(`${completed.length}件の入庫を記録しました`);
+  if(skipped.length>0) showToast(`${skipped.length}件は数量未入力です`);
 }
 
 function clearOrderList(){
