@@ -1922,17 +1922,9 @@ function showToast(msg){
 renderDashboard();
 // 起動時に自動クラウド読み込み
 (async ()=>{
-  const keys = ['inv2_products','inv2_stores','inv2_logs','inv2_orders'];
-  let changed = false;
-  for(const key of keys){
-    const val = await gasGet(key);
-    if(val){
-      localStorage.setItem(key, val);
-      changed = true;
-    }
-  }
-  if(changed) renderDashboard();
+  await syncFromCloud();
 })();
+
 </script>
 
 </body>
