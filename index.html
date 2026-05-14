@@ -1832,13 +1832,17 @@ async function gasGet(key){
   } catch(e){ return null; }
 }
 
-async function gasSet(key, value){
+async async function gasSet(key, value){
   try {
-    const url = `${GAS_URL}?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`;
-    const res = await fetch(url);
+    const res = await fetch(`${GAS_URL}?key=${encodeURIComponent(key)}`, {
+      method: 'POST',
+      body: value
+    });
     const json = await res.json();
     return json.ok;
   } catch(e){ return false; }
+}
+
 }
 
 
