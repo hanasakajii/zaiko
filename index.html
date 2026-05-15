@@ -1844,7 +1844,6 @@ async function gasSet(key, value){
 
 
 async function syncToCloud(){
-
   const s = getS();
   showToast('クラウドに保存中...');
   const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
@@ -1855,9 +1854,12 @@ async function syncToCloud(){
   for(let i=0;i<oChunks.length;i++) await gasSet('inv2_orders_'+i, JSON.stringify(oChunks[i]));
   await gasSet('inv2_orders_count', String(oChunks.length));
   await gasSet('inv2_stores', JSON.stringify(s.stores));
-  await gasSet('inv2_logs',   JSON.stringify(s.logs));
+  const lChunks = chunk(s.logs, 20);
+  for(let i=0;i<lChunks.length;i++) await gasSet('inv2_logs_'+i, JSON.stringify(lChunks[i]));
+  await gasSet('inv2_logs_count', String(lChunks.length));
   showToast('✓ クラウドに保存しました');
 }
+
 
 
 async function syncFromCloud(){
@@ -1883,10 +1885,18 @@ async function syncFromCloud(){
     localStorage.setItem('inv2_orders', JSON.stringify(all));
     changed = true;
   }
-  for(const key of ['inv2_stores','inv2_logs']){
-    const val = await gasGet(key);
-    if(val){ localStorage.setItem(key, val); changed = true; }
+  const lCount = parseInt(await gasGet('inv2_logs_count'));
+  if(lCount > 0){
+    let all = [];
+    for(let i=0;i<lCount;i++){
+      const val = await gasGet('inv2_logs_'+i);
+      if(val) all = all.concat(JSON.parse(val));
+    }
+    localStorage.setItem('inv2_logs', JSON.stringify(all));
+    changed = true;
   }
+  const storesVal = await gasGet('inv2_stores');
+  if(storesVal){ localStorage.setItem('inv2_stores', storesVal); changed = true; }
   if(changed){
     showToast('✓ データを同期しました');
     renderDashboard();
@@ -1894,6 +1904,7 @@ async function syncFromCloud(){
     showToast('クラウドにデータがありません');
   }
 }
+
 
 
 // ===================== TOAST =====================
