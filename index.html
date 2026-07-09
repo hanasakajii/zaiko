@@ -716,6 +716,11 @@ border-top: 1px solid var(--border2);
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       注文データをバックアップ
     </button>
+    <button class="menu-sheet-item" onclick="triggerRestore();closeMenu()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 11-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>
+      バックアップから復元
+    </button>
+    <input type="file" id="restore-file-input" accept="application/json,.json" style="display:none;" onchange="restoreFromFile(this.files[0])">
     <button class="menu-sheet-item" onclick="openDeleteOrderModal();closeMenu();" style="color:var(--red);">
       <svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/></svg>
       注文データを削除
@@ -2069,6 +2074,43 @@ function execDeleteOrder(){
 
 // ===================== TOAST =====================
 // ===================== バックアップ =====================
+function triggerRestore(){
+  document.getElementById('restore-file-input').click();
+}
+
+function restoreFromFile(file){
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    let data;
+    try {
+      data = JSON.parse(e.target.result);
+    } catch(err){
+      showToast('⚠ ファイルの形式が正しくありません');
+      return;
+    }
+    if(!data.orders || !Array.isArray(data.orders)){
+      showToast('⚠ バックアップファイルの形式が正しくありません');
+      return;
+    }
+    const dateLabel = data.exportedAt ? new Date(data.exportedAt).toLocaleString('ja-JP') : '不明';
+    const msg = `このバックアップ（${dateLabel}時点／注文${data.orders.length}件）で、今のデータを上書きします。\n\n現在のデータは失われます。よろしいですか？`;
+    if(!confirm(msg)) return;
+
+    localStorage.setItem('inv2_orders', JSON.stringify(data.orders));
+    if(data.products) localStorage.setItem('inv2_products', JSON.stringify(data.products));
+    if(data.stores) localStorage.setItem('inv2_stores', JSON.stringify(data.stores));
+
+    showToast(`✓ 復元しました（注文${data.orders.length}件）。クラウドにも保存します`);
+    renderDashboard();
+    // 復元した内容をクラウドにも反映しておく
+    setTimeout(()=>{ if(typeof syncToCloud==='function') syncToCloud(); }, 500);
+  };
+  reader.onerror = ()=>{ showToast('⚠ ファイルの読み込みに失敗しました'); };
+  reader.readAsText(file, 'utf-8');
+  document.getElementById('restore-file-input').value = '';
+}
+
 async function backupOrders(){
   const s = getS();
   const backup = {
