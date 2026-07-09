@@ -1872,8 +1872,9 @@ function delStore(name){
   showToast(`${name} を削除しました`);
 }
 
-// ===================== CLOUD SYNC =====================
+// ===================== CLOUD SYNC (2026-07-09 修正版) =====================
 const GAS_URL = 'https://zaiko-api.cherry-blossom-pochi.workers.dev';
+let cloudSyncing = false;
 
 async function gasGet(key){
   try {
@@ -1883,72 +1884,119 @@ async function gasGet(key){
   } catch(e){ return null; }
 }
 
+// POST方式に変更（URLの長さ制限で保存が途中で欠けるのを防ぐ）
 async function gasSet(key, value){
   try {
-    const url = `${GAS_URL}?key=${encodeURIComponent(key)}&value=${encodeURIComponent(value)}`;
-    const res = await fetch(url);
+    const res = await fetch(GAS_URL, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({key, value})
+    });
     const json = await res.json();
-    return json.ok;
+    return !!(json && json.ok);
   } catch(e){ return false; }
 }
 
+// 前回より少ないチャンク数になった場合、余ったチャンクを空にする
+// （これをやらないと、古いチャンクにデータが残り続けて重複の原因になる）
+async function clearLeftoverChunks(prefix, newCount){
+  for(let i=newCount; i<newCount+20; i++){
+    const existing = await gasGet(prefix+i);
+    if(existing===null) break;
+    await gasSet(prefix+i, '[]');
+  }
+}
+
 async function syncToCloud(){
+  if(cloudSyncing){ showToast('同期中です。少し待ってからお試しください'); return; }
+  cloudSyncing = true;
   const s = getS();
   showToast('クラウドに保存中...');
   const chunk = (arr, size) => Array.from({length: Math.ceil(arr.length/size)}, (_,i) => arr.slice(i*size,(i+1)*size));
-  const pChunks = chunk(s.products, 20);
-  for(let i=0;i<pChunks.length;i++) await gasSet('inv2_products_'+i, JSON.stringify(pChunks[i]));
-  await gasSet('inv2_products_count', String(pChunks.length));
-  const oChunks = chunk(s.orders, 5);
-  for(let i=0;i<oChunks.length;i++) await gasSet('inv2_orders_'+i, JSON.stringify(oChunks[i]));
-  await gasSet('inv2_orders_count', String(oChunks.length));
-  await gasSet('inv2_stores', JSON.stringify(s.stores));
-  const lChunks = chunk(s.logs, 20);
-  for(let i=0;i<lChunks.length;i++) await gasSet('inv2_logs_'+i, JSON.stringify(lChunks[i]));
-  await gasSet('inv2_logs_count', String(lChunks.length));
-  showToast('✓ クラウドに保存しました');
+
+  try {
+    const pChunks = chunk(s.products, 20);
+    for(let i=0;i<pChunks.length;i++){
+      const ok = await gasSet('inv2_products_'+i, JSON.stringify(pChunks[i]));
+      if(!ok) throw new Error('products保存に失敗');
+    }
+    await clearLeftoverChunks('inv2_products_', pChunks.length);
+    await gasSet('inv2_products_count', String(pChunks.length));
+
+    const oChunks = chunk(s.orders, 5);
+    for(let i=0;i<oChunks.length;i++){
+      const ok = await gasSet('inv2_orders_'+i, JSON.stringify(oChunks[i]));
+      if(!ok) throw new Error('orders保存に失敗');
+    }
+    await clearLeftoverChunks('inv2_orders_', oChunks.length);
+    // 全チャンクの書き込みが成功した後に、最後にcountを更新する
+    // （途中で失敗した場合はcountを進めない＝古いデータのまま保つ）
+    await gasSet('inv2_orders_count', String(oChunks.length));
+
+    await gasSet('inv2_stores', JSON.stringify(s.stores));
+
+    const lChunks = chunk(s.logs, 20);
+    for(let i=0;i<lChunks.length;i++){
+      const ok = await gasSet('inv2_logs_'+i, JSON.stringify(lChunks[i]));
+      if(!ok) throw new Error('logs保存に失敗');
+    }
+    await clearLeftoverChunks('inv2_logs_', lChunks.length);
+    await gasSet('inv2_logs_count', String(lChunks.length));
+
+    showToast('✓ クラウドに保存しました');
+  } catch(e){
+    showToast('⚠ 保存に失敗しました。通信環境の良い場所でもう一度お試しください');
+  } finally {
+    cloudSyncing = false;
+  }
 }
 
 async function syncFromCloud(){
+  if(cloudSyncing){ return; }
+  cloudSyncing = true;
   showToast('クラウドからデータを読み込み中...');
   let changed = false;
-  const pCount = parseInt(await gasGet('inv2_products_count'));
-  if(pCount > 0){
-    let all = [];
-    for(let i=0;i<pCount;i++){
-      const val = await gasGet('inv2_products_'+i);
-      if(val) all = all.concat(JSON.parse(val));
+  try {
+    const pCount = parseInt(await gasGet('inv2_products_count'));
+    if(pCount > 0){
+      let all = [];
+      for(let i=0;i<pCount;i++){
+        const val = await gasGet('inv2_products_'+i);
+        if(val) all = all.concat(JSON.parse(val));
+      }
+      localStorage.setItem('inv2_products', JSON.stringify(all));
+      changed = true;
     }
-    localStorage.setItem('inv2_products', JSON.stringify(all));
-    changed = true;
-  }
-  const oCount = parseInt(await gasGet('inv2_orders_count'));
-  if(oCount > 0){
-    let all = [];
-    for(let i=0;i<oCount;i++){
-      const val = await gasGet('inv2_orders_'+i);
-      if(val) all = all.concat(JSON.parse(val));
+    const oCount = parseInt(await gasGet('inv2_orders_count'));
+    if(oCount > 0){
+      let all = [];
+      for(let i=0;i<oCount;i++){
+        const val = await gasGet('inv2_orders_'+i);
+        if(val) all = all.concat(JSON.parse(val));
+      }
+      localStorage.setItem('inv2_orders', JSON.stringify(all));
+      changed = true;
     }
-    localStorage.setItem('inv2_orders', JSON.stringify(all));
-    changed = true;
-  }
-  const lCount = parseInt(await gasGet('inv2_logs_count'));
-  if(lCount > 0){
-    let all = [];
-    for(let i=0;i<lCount;i++){
-      const val = await gasGet('inv2_logs_'+i);
-      if(val) all = all.concat(JSON.parse(val));
+    const lCount = parseInt(await gasGet('inv2_logs_count'));
+    if(lCount > 0){
+      let all = [];
+      for(let i=0;i<lCount;i++){
+        const val = await gasGet('inv2_logs_'+i);
+        if(val) all = all.concat(JSON.parse(val));
+      }
+      localStorage.setItem('inv2_logs', JSON.stringify(all));
+      changed = true;
     }
-    localStorage.setItem('inv2_logs', JSON.stringify(all));
-    changed = true;
-  }
-  const storesVal = await gasGet('inv2_stores');
-  if(storesVal){ localStorage.setItem('inv2_stores', storesVal); changed = true; }
-  if(changed){
-    showToast('✓ データを同期しました');
-    renderDashboard();
-  } else {
-    showToast('クラウドにデータがありません');
+    const storesVal = await gasGet('inv2_stores');
+    if(storesVal){ localStorage.setItem('inv2_stores', storesVal); changed = true; }
+    if(changed){
+      showToast('✓ データを同期しました');
+      renderDashboard();
+    } else {
+      showToast('クラウドにデータがありません');
+    }
+  } finally {
+    cloudSyncing = false;
   }
 }
 
