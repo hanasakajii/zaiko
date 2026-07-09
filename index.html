@@ -2069,7 +2069,7 @@ function execDeleteOrder(){
 
 // ===================== TOAST =====================
 // ===================== バックアップ =====================
-function backupOrders(){
+async function backupOrders(){
   const s = getS();
   const backup = {
     exportedAt: new Date().toISOString(),
@@ -2078,12 +2078,29 @@ function backupOrders(){
     stores: s.stores,
   };
   const jsonStr = JSON.stringify(backup, null, 2);
+  const dateStr = new Date().toISOString().slice(0,10);
+  const filename = `zaiko_backup_${dateStr}.json`;
   const blob = new Blob([jsonStr], {type:'application/json'});
+  const file = new File([blob], filename, {type:'application/json'});
+
+  // iOSのホーム画面アプリ(PWA)ではダウンロードリンクが機能しないため、
+  // 共有シート(share sheet)経由でファイルに保存できるようにする
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try {
+      await navigator.share({files:[file], title:filename});
+      showToast(`✓ バックアップを共有しました（注文${s.orders.length}件）`);
+      return;
+    } catch(e){
+      // 共有をキャンセルした場合など。フォールバックへ
+      if(e && e.name === 'AbortError'){ return; }
+    }
+  }
+
+  // 通常ブラウザ(共有APIが使えない場合)向けフォールバック
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  const dateStr = new Date().toISOString().slice(0,10);
   a.href = url;
-  a.download = `zaiko_backup_${dateStr}.json`;
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
