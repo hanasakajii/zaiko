@@ -1569,6 +1569,16 @@ function oReset(){
 
 // ===================== ANALYSIS =====================
 let selectedMonths = new Set();
+const NAME_ALIAS = {
+  'オキシ6％':'オキシ６％',
+  'オキシ6%':'オキシ６％',
+  'オキシ６%':'オキシ６％',
+  'キャスミン 6%':'オキシ６％',
+  'キャスミン 6％':'オキシ６％',
+};
+const normName = n => NAME_ALIAS[n] || n;
+
+
 let selectedStores = new Set();
 
 function initAnalysis(){
@@ -1649,7 +1659,7 @@ function renderAnalysis(){
 
   const mapAll = {};
   filteredOrders.forEach(o=>o.items.forEach(it=>{
-    mapAll[it.name]=(mapAll[it.name]||0)+it.qty;
+    mapAll[normName(it.name)]=(mapAll[normName(it.name)]||0)+it.qty;
   }));
   const sortedAll = Object.entries(mapAll).sort((a,b)=>b[1]-a[1]);
   const top10 = sortedAll.slice(0,10);
@@ -1676,11 +1686,11 @@ function renderAnalysis(){
   filteredOrders.forEach(o=>{
     if(!monthMap[o.month]) monthMap[o.month]={};
     o.items.forEach(it=>{
-      monthMap[o.month][it.name]=(monthMap[o.month][it.name]||0)+it.qty;
+monthMap[o.month][normName(it.name)]=(monthMap[o.month][normName(it.name)]||0)+it.qty;
     });
   });
 
-  const allNames = [...new Set(filteredOrders.flatMap(o=>o.items.map(it=>it.name)))]
+const allNames = [...new Set(filteredOrders.flatMap(o=>o.items.map(it=>normName(it.name))))]
     .filter(n=>!q||n.toLowerCase().includes(q));
 
   const thead = document.getElementById('analysis-thead');
