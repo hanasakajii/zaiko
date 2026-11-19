@@ -1484,12 +1484,14 @@ function oCollect(){
   const items=[];
   document.querySelectorAll('.order-qty').forEach(inp=>{
     const v=parseInt(inp.value);
-    if(!isNaN(v)&&v>0) items.push({name:inp.dataset.name,qty:v,type:'fixed'});
+if(!isNaN(v)&&v>0) items.push({name:normName(inp.dataset.name),qty:v,type:'fixed'});
+
   });
   document.querySelectorAll('.free-row').forEach(row=>{
     const name=row.querySelector('[data-free-name]').value.trim();
     const qty=parseInt(row.querySelector('[data-free-qty]').value);
-    if(name&&!isNaN(qty)&&qty>0) items.push({name,qty,type:'free'});
+if(name&&!isNaN(qty)&&qty>0) items.push({name:normName(name),qty,type:'free'});
+
   });
   return items;
 }
